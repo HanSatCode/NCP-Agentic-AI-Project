@@ -1,0 +1,11 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# 업로드된 실제 파일은 저장소에 올리지 않음 (폴더만 유지)
+storage/*
+!storage/.gitkeep
+
+# SQLite DB 파일
+db/*.sqlite*
