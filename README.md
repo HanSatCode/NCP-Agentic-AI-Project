@@ -27,6 +27,8 @@
 npm install
 npm run dev     # http://localhost:3000
 npm test        # 분석 함수 테스트
+npm run samples # 예시 파일 만들기 + 수정 날짜 맞추기 (clone 뒤 끌어다 놓기 시연 전에)
+npm run check   # 예시 파일로 분석 결과 검사 (/check-result)
 ```
 
 배포용 빌드는 `npm run build` 후 `npm start`.
