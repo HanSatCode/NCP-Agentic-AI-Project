@@ -1139,34 +1139,97 @@ label.file-row:hover {
   }
 }
 
-/* ---------- 업로드 화면: 남은 세로 공간을 꽉 채움 ---------- */
+/* ---------- 한 화면에 맞춤: 페이지는 스크롤하지 않고, 넘치는 목록·카드만 영역 안에서 스크롤 ---------- */
 main {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding-bottom: 32px;
+  height: 100vh;
+  height: 100dvh;
+  padding-bottom: 24px;
 }
 .app {
   flex: 1;
+  min-height: 0;
 }
-.panel-upload {
+.panel {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
-/* 드롭 영역이 늘어나서 빈 공간을 채움. 파일 목록이 생기면 최소 높이까지 줄어듦 */
-.panel-upload .dropzone {
+/* 단계 제목과 아래 버튼은 고정, 가운데만 스크롤. 좌우 여백은 포커스 테두리가 잘리지 않게 */
+.panel-body {
   flex: 1;
-  justify-content: center;
-  min-height: 260px;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -6px;
+  padding: 0 6px 6px;
 }
-@media (max-width: 480px) {
+
+/* STEP 1: 왼쪽 파일 목록, 오른쪽 업로드 영역 */
+.upload-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(280px, 2fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 24px;
+  margin-top: 24px;
+}
+.upload-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.upload-list .table-head {
+  margin: 0 0 10px;
+}
+.upload-list .table-wrap {
+  min-height: 0;
+  overflow: auto;
+}
+.upload-list th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.list-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  color: var(--muted);
+}
+.upload-grid .dropzone {
+  margin-top: 0;
+  justify-content: center;
+}
+.drop-icon,
+.table-head .btn {
+  flex: none;
+}
+
+/* 태블릿·폰: 한 줄로 쌓고 페이지 스크롤 (업로드 영역이 위) */
+@media (max-width: 860px) {
   main {
-    padding-bottom: 24px;
+    height: auto;
+    min-height: 100dvh;
   }
-  .panel-upload .dropzone {
+  .panel-body {
+    overflow: visible;
+  }
+  .upload-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+  .upload-grid .dropzone {
+    order: -1;
     min-height: 200px;
+  }
+  .list-empty {
+    display: none;
   }
 }
 

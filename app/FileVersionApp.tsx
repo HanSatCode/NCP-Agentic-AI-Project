@@ -418,13 +418,80 @@ export default function FileVersionApp() {
 
       {/* S-02 STEP 1 파일 업로드 */}
       {view === 1 && (
-      <section className="panel panel-upload" aria-labelledby="s02-title">
+      <section className="panel" aria-labelledby="s02-title">
         <SectionHead
           step={1}
           id="s02-title"
           title="파일 업로드"
           desc="같은 과제의 여러 버전 파일을 한 번에 올려 주세요. 파일은 이 브라우저 밖으로 나가지 않아요."
         />
+
+        {/* 왼쪽 = 파일 목록, 오른쪽 = 업로드 영역 (폰에서는 업로드 영역이 위) */}
+        <div className="upload-grid">
+        <div className="upload-list">
+          {items.length === 0 ? (
+            <div className="list-empty">올린 파일이 여기에 표시돼요</div>
+          ) : (
+            <>
+              <div className="table-head">
+                <span className="count">파일 {items.length}개</span>
+                <button type="button" className="btn small" onClick={clearAll}>
+                  모두 지우기
+                </button>
+              </div>
+              <div className="table-wrap">
+                <table className="files">
+                  <thead>
+                    <tr>
+                      <th aria-sort={ariaSort("name")}>
+                        <button type="button" className="th-btn" onClick={() => toggleSort("name")}>
+                          파일명 <span aria-hidden>{sortMark("name")}</span>
+                        </button>
+                      </th>
+                      <th aria-sort={ariaSort("date")}>
+                        <button type="button" className="th-btn" onClick={() => toggleSort("date")}>
+                          수정 날짜 <span aria-hidden>{sortMark("date")}</span>
+                        </button>
+                      </th>
+                      <th aria-sort={ariaSort("size")} className="col-size">
+                        <button type="button" className="th-btn" onClick={() => toggleSort("size")}>
+                          크기 <span aria-hidden>{sortMark("size")}</span>
+                        </button>
+                      </th>
+                      <th className="col-remove">
+                        <span className="sr-only">빼기</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedItems.map((x) => (
+                      <tr key={x.input.id}>
+                        <td className="name">
+                          <span className="name-cell">
+                            <FileTypeIcon name={x.file.name} />
+                            <span>{x.file.name}</span>
+                          </span>
+                        </td>
+                        <td className="nowrap">{formatDate(x.file.lastModified)}</td>
+                        <td className="nowrap col-size">{formatSize(x.file.size)}</td>
+                        <td className="col-remove">
+                          <button
+                            type="button"
+                            className="remove"
+                            aria-label={`${x.file.name} 빼기`}
+                            onClick={() => removeOne(x.input.id)}
+                          >
+                            ×
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
 
         <div
           className={`dropzone ${dragOver ? "drag" : ""}`}
@@ -462,6 +529,7 @@ export default function FileVersionApp() {
           </span>
           <span className="drop-sub">여러 파일을 한 번에 올릴 수 있어요 · 파일당 20MB까지</span>
         </div>
+        </div>
         <input
           ref={inputRef}
           type="file"
@@ -496,67 +564,6 @@ export default function FileVersionApp() {
           )}
         </div>
         {items.length === 1 && <p className="hint warn">{MSG.M02}</p>}
-
-        {items.length > 0 && (
-          <>
-            <div className="table-head">
-              <span className="count">파일 {items.length}개</span>
-              <button type="button" className="btn small" onClick={clearAll}>
-                모두 지우기
-              </button>
-            </div>
-            <div className="table-wrap">
-              <table className="files">
-                <thead>
-                  <tr>
-                    <th aria-sort={ariaSort("name")}>
-                      <button type="button" className="th-btn" onClick={() => toggleSort("name")}>
-                        파일명 <span aria-hidden>{sortMark("name")}</span>
-                      </button>
-                    </th>
-                    <th aria-sort={ariaSort("date")}>
-                      <button type="button" className="th-btn" onClick={() => toggleSort("date")}>
-                        수정 날짜 <span aria-hidden>{sortMark("date")}</span>
-                      </button>
-                    </th>
-                    <th aria-sort={ariaSort("size")} className="col-size">
-                      <button type="button" className="th-btn" onClick={() => toggleSort("size")}>
-                        크기 <span aria-hidden>{sortMark("size")}</span>
-                      </button>
-                    </th>
-                    <th className="col-remove">
-                      <span className="sr-only">빼기</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedItems.map((x) => (
-                    <tr key={x.input.id}>
-                      <td className="name">
-                        <span className="name-cell">
-                          <FileTypeIcon name={x.file.name} />
-                          <span>{x.file.name}</span>
-                        </span>
-                      </td>
-                      <td className="nowrap">{formatDate(x.file.lastModified)}</td>
-                      <td className="nowrap col-size">{formatSize(x.file.size)}</td>
-                      <td className="col-remove">
-                        <button
-                          type="button"
-                          className="remove"
-                          aria-label={`${x.file.name} 빼기`}
-                          onClick={() => removeOne(x.input.id)}
-                        >
-                          ×
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
       </section>
       )}
 
@@ -595,6 +602,7 @@ export default function FileVersionApp() {
             }
           />
 
+          <div className="panel-body">
           <div className="cards">
             {analysis.groups.map((g) => {
               // 4개 이상이면 위 2개 + "… N개 더" (누르면 펼침)
@@ -683,6 +691,7 @@ export default function FileVersionApp() {
               </div>
             )}
           </div>
+          </div>
 
           <div className="actions">
             <button type="button" className="btn" onClick={() => setView(1)}>
@@ -706,6 +715,7 @@ export default function FileVersionApp() {
             desc="새 이름 규칙은 기본이름_v번호_수정날짜예요. 그룹의 기본 이름은 직접 고칠 수 있어요."
           />
 
+          <div className="panel-body">
           <div className="base-inputs">
             {analysis.groups.map((g) => {
               const value = drafts[g.key] ?? bases[g.key] ?? g.baseName;
@@ -762,6 +772,7 @@ export default function FileVersionApp() {
                 })}
               </tbody>
             </table>
+          </div>
           </div>
 
           <div className="actions">
