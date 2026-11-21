@@ -110,13 +110,13 @@ export function PreviewBody({ file }: { file: File }) {
       {view.kind === "text" && (
         <>
           <pre className="viewer-text">{view.text || "(내용이 비어 있어요)"}</pre>
-          {view.cut && <p className="viewer-note">앞부분 200KB만 보여주고 있어요</p>}
+          {view.cut && <p className="viewer-note">앞부분 200KB만 보여 드려요</p>}
         </>
       )}
       {view.kind === "doc" && (
         <>
           <pre className="viewer-text viewer-doc">{view.text || "(글자가 없어요)"}</pre>
-          <p className="viewer-note">서식과 그림은 빼고 글자만 보여 주고 있어요</p>
+          <p className="viewer-note">서식과 그림은 빼고 글자만 보여 드려요</p>
         </>
       )}
       {view.kind === "none" && (
@@ -195,7 +195,7 @@ function OfficePreview({ file, ext, onFail }: { file: File; ext: string; onFail:
 
   return (
     <>
-      {!ready && <p className="viewer-empty">파일을 그리는 중...</p>}
+      {!ready && <p className="viewer-empty">미리보기를 만드는 중...</p>}
       {/* 다 그릴 때까지 투명하게만 숨김 (display:none이면 쪽 폭을 잴 수 없음) */}
       <div ref={ref} className={`office-preview office-${ext} ${ready ? "" : "is-drawing"}`} />
     </>

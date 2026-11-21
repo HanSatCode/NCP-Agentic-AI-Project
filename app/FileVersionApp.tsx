@@ -3,17 +3,30 @@
 // 한 페이지에서 업로드(S-02) → 분석(S-03) → 이름 변경·내려받기(S-04) 순서로 진행한다
 // 파일은 서버로 보내지 않고 브라우저 안에서만 다룬다. 원본은 바꾸지 않고 새 이름의 사본만 내려받는다
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DragEvent, KeyboardEvent } from "react";
 import FilePreview, { PreviewBody } from "./FilePreview";
 import Logo from "./Logo";
 // 분석 로직은 src/analysis (화면 코드 없음, /check-result와 같은 함수). 규칙은 rules/version-rules.json
 import rules from "@/rules/version-rules.json";
 import type { Rules } from "@/src/analysis/baseName.ts";
-import { analyze, decidingCriterion, type Analysis, type FileResult, type Group } from "@/src/analysis/analyze.ts";
-import { rename, type RenameRow, type Scope } from "@/src/analysis/rename.ts";
+import { analyze, decidingCriterion, reasonDetail, type Analysis, type FileResult, type Group } from "@/src/analysis/analyze.ts";
+import {
+  DATE_FORMATS,
+  DEFAULT_PATTERN,
+  formatDate as formatNameDate,
+  formatVersion,
+  rename,
+  VERSION_FORMATS,
+  type DateFormat,
+  type NamePart,
+  type RenameRow,
+  type Scope,
+  type VersionFormat,
+} from "@/src/analysis/rename.ts";
 import { acceptFiles, loadSamples, toInputFiles } from "@/src/analysis/upload.ts";
-import { makeDownload } from "@/src/analysis/zip.ts";
+import { isZip, unzipFiles, ZIP_MAX } from "@/src/analysis/unzip.ts";
+import { makeDownload, zipName } from "@/src/analysis/zip.ts";
 import { readDocMeta, type DocMeta } from "@/src/analysis/metadata.ts";
 import type { InputFile } from "@/src/analysis/types.ts";
 
@@ -30,9 +43,14 @@ const MSG = {
   M06: "기본 이름은 비워 둘 수 없어요",
   M07: "파일만 올릴 수 있어요",
   M08: (n: number) => `파일 ${n}개를 내려받았어요`,
+  // zip 올리기 (D-39)
+  M09: (zip: string, n: number) => `'${zip}' 안의 파일 ${n}개는 열 수 없어서 빼고 올렸어요`,
+  M10: (zip: string) => `'${zip}'은 풀 수 없어서 빼고 올렸어요`,
+  M11: (zip: string) => `'${zip}' 안에 올릴 파일이 없어요`,
+  M12: (zip: string) => `'${zip}'은 100MB가 넘어서 빼고 올렸어요`,
 };
 
-type SortKey = "name" | "date" | "created" | "saved" | "revision" | "size";
+type SortKey = "name" | "date" | "created" | "saved" | "size";
 type Toast = { id: number; text: string; kind: "info" | "warn" | "done" };
 
 function formatDate(ts: number) {
@@ -66,7 +84,7 @@ function TrustNote({ className }: { className: string }) {
         <rect x="4" y="11" width="16" height="10" rx="2" />
         <path d="M8 11V7a4 4 0 0 1 8 0v4" />
       </svg>
-      파일은 서버로 올라가지 않고 내 브라우저 안에서만 처리돼요
+      파일은 서버에 올라가지 않고, 이 브라우저 안에서만 처리돼요
     </p>
   );
 }
@@ -130,6 +148,60 @@ function ChipScroller({ label, active, children }: { label: string; active: stri
 }
 
 /** 다음 단계로 가는 버튼의 → (마우스를 올리면 앞으로 살짝) */
+/** 글자가 바뀌면 새 글자가 살짝 떠오르며 나타나게. k가 바뀔 때마다 안쪽을 새로 그려서 애니메이션이 다시 돎.
+ *  (key는 형제끼리에서만 먹으므로 바깥 span 안에 key 달린 span을 둠) */
+function Swap({ k, children }: { k: string | number; children: React.ReactNode }) {
+  return (
+    <span className="swap-wrap">
+      <span key={k} className="swap swap-inline">
+        {children}
+      </span>
+    </span>
+  );
+}
+
+/** 글자가 바뀌는 버튼(분석하기 → 분석 중 → 끝났어요, 내려받기 → 요청했어요)의 크기를 처음부터 가장 긴 문구에 맞춤.
+ *  모든 문구를 같은 칸에 겹쳐 그려 두고(안 보이게) 지금 문구만 보여 줌. 지금 문구는 바뀔 때마다 새로 그려서 체크 애니메이션이 다시 돎 */
+function StableLabel({ states, current = 0 }: { states: React.ReactNode[]; current?: number }) {
+  return (
+    <span className="stable-label">
+      {/* 하단바 주 버튼은 단계마다 같은 폭: 가장 긴 문구(내려받기 완료)를 늘 크기 재는 데 넣음 */}
+      {[...states, WIDEST_PRIMARY].map((s, i) => (
+        <span key={i} className="stable-sizer" aria-hidden>
+          {s}
+        </span>
+      ))}
+      <span key={`on-${current}`} className="stable-on">
+        {states[current]}
+      </span>
+    </span>
+  );
+}
+
+function CheckMark() {
+  return (
+    <svg className="btn-check" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+const WIDEST_PRIMARY = (
+  <>
+    <CheckMark />
+    다운로드를 요청했어요!
+  </>
+);
+
+/** [내려받기] 아이콘: 아래 화살표 + 받침. 올리면 화살표가 살짝 내려감 */
+function DownloadIcon() {
+  return (
+    <svg className="btn-down" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path className="btn-down-arrow" d="M12 4v11M7 10.5l5 5 5-5" />
+      <path d="M5 20h14" />
+    </svg>
+  );
+}
+
 function ArrowIcon() {
   return (
     <svg className="btn-arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -163,6 +235,320 @@ const EXT_KIND: Record<string, string> = {
   pdf: "pdf",
   png: "image", jpg: "image", jpeg: "image", gif: "image", webp: "image", svg: "image",
 };
+
+/** 내용이 바뀌어 높이가 달라지면 예전 높이에서 새 높이로 부드럽게 바꿈 (아래 목록이 툭 밀리지 않게).
+ *  CSS는 auto 높이끼리 애니메이션을 못 해서, 그릴 때마다 높이를 재어 두고 달라지면 Web Animations로 이어 줌.
+ *  창 크기 등으로 바뀐 높이는 애니메이션 없이 기억만 함 (ResizeObserver) */
+function useSmoothHeight<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const last = useRef<number | null>(null);
+  const anim = useRef<Animation | null>(null);
+  const watch = useRef<{ el: T; ro: ResizeObserver } | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (watch.current && watch.current.el !== el) {
+      watch.current.ro.disconnect();
+      watch.current = null;
+    }
+    if (!el) {
+      last.current = null;
+      return;
+    }
+    if (!watch.current) {
+      const ro = new ResizeObserver(() => {
+        if (anim.current?.playState !== "running") last.current = el.offsetHeight;
+      });
+      ro.observe(el);
+      watch.current = { el, ro };
+    }
+    anim.current?.cancel(); // 하던 애니메이션을 멈춰야 실제 새 높이를 잴 수 있음
+    const now = el.offsetHeight;
+    const prev = last.current;
+    last.current = now;
+    if (prev === null || Math.abs(prev - now) < 1 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    anim.current = el.animate([{ height: `${prev}px` }, { height: `${now}px` }], { duration: 320, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+  });
+  useEffect(() => () => watch.current?.ro.disconnect(), []);
+  return ref;
+}
+
+/** 한 줄에 안 들어가는 글자는 왼쪽으로만 흘러가며 뒷부분을 보여 주고, 처음으로 돌아가 다시 (단방향).
+ *  들어가면 가만히 있음. 칸 폭이나 글꼴이 바뀌면 다시 잼 */
+function SlideText({ text, className = "" }: { text: string; className?: string }) {
+  const outer = useRef<HTMLSpanElement>(null);
+  const inner = useRef<HTMLSpanElement>(null);
+  const [shift, setShift] = useState(0);
+  useEffect(() => {
+    const o = outer.current!;
+    const i = inner.current!;
+    const measure = () => setShift(Math.max(0, Math.ceil(i.offsetWidth - o.clientWidth)));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(o);
+    ro.observe(i);
+    return () => ro.disconnect();
+  }, [text]);
+  const style = shift
+    ? ({ "--shift": `-${shift}px`, "--dur": `${(3 + shift / 40).toFixed(1)}s` } as React.CSSProperties)
+    : undefined;
+  return (
+    <span ref={outer} className={`slide-text ${shift ? "is-sliding" : ""} ${className}`} style={style} title={shift ? text : undefined}>
+      <span ref={inner} className="slide-inner">
+        {text}
+      </span>
+    </span>
+  );
+}
+
+const PART_LABEL: Record<NamePart, string> = { base: "기본 이름", version: "버전 번호", date: "수정 날짜" };
+const VERSION_HINT: Record<VersionFormat, string> = {
+  v01: "두 자리 (기본)",
+  v1: "한 자리",
+  v001: "세 자리",
+  V01: "대문자 V",
+  ver01: "ver",
+  ver1: "ver 한 자리",
+  Ver01: "Ver",
+  VER01: "VER 대문자",
+};
+// 한 자리 번호는 10개부터 탐색기 정렬이 섞임 (v10이 v2보다 앞)
+const ONE_DIGIT: VersionFormat[] = ["v1", "ver1"];
+const V1_WARN =
+  "번호가 한 자리면 파일 탐색기가 글자 순서로 정렬해서, 버전이 10개를 넘을 때 v10이 v2보다 앞에 와요. 두 자리(v01)로 쓰면 순서대로 보여요.";
+
+/** 노란 세모 경고. 누르면 말풍선으로 이유를 보여 주고, 바깥을 누르거나 Esc면 닫힘.
+ *  다른 버튼(표기 항목·버전 칸) 안에 넣으면 누를 때 그 버튼까지 눌리므로 늘 옆에 따로 둠 */
+function WarnTip({ label }: { label: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+  return (
+    <span className="warn-tip" ref={ref}>
+      <button
+        type="button"
+        className="warn-icon"
+        aria-label="경고 이유 보기"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+      >
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden>
+          <path d="M12 3.2 22 20.5H2z" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+          <path d="M12 9.5v5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
+          <circle cx="12" cy="17.6" r="1.2" fill="#fff" />
+        </svg>
+      </button>
+      {open && (
+        <span className="warn-bubble" role="status">
+          {label}
+        </span>
+      )}
+    </span>
+  );
+}
+const DATE_HINT: Record<DateFormat, string> = {
+  yyyymmdd: "붙여 쓰기 (기본)",
+  "yyyy-mm-dd": "- 로 나누기",
+  "yyyy.mm.dd": ". 으로 나누기",
+  "yyyy년m월d일": "한글로",
+  mmdd: "월·일만",
+  "mm.dd": "월·일만, . 으로",
+  "m월d일": "월·일만, 한글로",
+};
+
+/** 새 이름 모양: 칸 순서(D-42) + 버전·날짜 표기(D-43) */
+type NameFmt = { pattern: NamePart[]; versionFormat: VersionFormat; dateFormat: DateFormat };
+const DEFAULT_FMT: NameFmt = { pattern: DEFAULT_PATTERN, versionFormat: "v01", dateFormat: "yyyymmdd" };
+
+/** STEP 3 "이름 모양": 칸을 끌면 순서가 바뀌고(D-42), 끌지 않고 누르면 표기 고르기가 열림(D-43).
+ *  마우스·터치는 포인터로 끌기, 키보드는 ←/→로 옮기고 Enter로 표기 고르기 */
+function PatternEditor({ value, onChange, maxVersions }: { value: NameFmt; onChange: (f: NameFmt) => void; maxVersions: number }) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState<NamePart | null>(null);
+  const [focusPart, setFocusPart] = useState<NamePart | null>(null);
+  const [menu, setMenu] = useState<NamePart | null>(null);
+  const movedRef = useRef(false); // 이번에 누른 동안 자리를 옮겼으면 클릭(표기 고르기)으로 치지 않음
+  const pattern = value.pattern;
+
+  const move = (part: NamePart, to: number) => {
+    const next = pattern.filter((p) => p !== part);
+    next.splice(Math.max(0, Math.min(to, next.length)), 0, part);
+    if (next.join() === pattern.join()) return;
+    movedRef.current = true;
+    setMenu(null);
+    onChange({ ...value, pattern: next });
+  };
+
+  // 자리를 옮기면 React가 DOM 노드를 옮기면서 포커스가 풀릴 수 있어 다시 줌
+  useEffect(() => {
+    if (focusPart) rowRef.current?.querySelector<HTMLElement>(`[data-part="${focusPart}"]`)?.focus();
+  }, [pattern, focusPart]);
+
+  // 칸이 옮겨지면 예전 자리에서 새 자리로 미끄러지게 (FLIP: 그리기 전에 옛 위치만큼 밀어 두고 0으로 되돌림)
+  const lastPos = useRef(new Map<string, { x: number; y: number }>());
+  useLayoutEffect(() => {
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    rowRef.current?.querySelectorAll<HTMLElement>("[data-cell]").forEach((el) => {
+      const now = { x: el.offsetLeft, y: el.offsetTop }; // offset은 transform의 영향을 안 받아서 애니메이션 중에도 실제 자리
+      const prev = lastPos.current.get(el.dataset.cell!);
+      if (prev && !still && (prev.x !== now.x || prev.y !== now.y)) {
+        el.animate([{ transform: `translate(${prev.x - now.x}px, ${prev.y - now.y}px)` }, { transform: "none" }], {
+          duration: 280,
+          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+        });
+      }
+      lastPos.current.set(el.dataset.cell!, now);
+    });
+  }, [pattern]);
+
+  // 끄는 동안 포인터가 다른 칸의 가운데를 넘으면 그 자리로. 칸이 DOM에서 옮겨지면 포인터 캡처가 풀릴 수 있어 window에서 받음
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (e: PointerEvent) => {
+      const chips = Array.from(rowRef.current!.querySelectorAll<HTMLElement>("[data-part]")).filter((el) => el.dataset.part !== dragging);
+      const to = chips.filter((el) => {
+        const r = el.getBoundingClientRect();
+        return e.clientX > r.left + r.width / 2;
+      }).length;
+      move(dragging, to);
+    };
+    const onUp = () => setDragging(null);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  });
+
+  // 표기 고르기는 바깥을 누르거나 Esc면 닫힘
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !rowRef.current?.contains(e.target as Node)) setMenu(null);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [menu]);
+
+  const sample = (part: NamePart, f: string) =>
+    part === "version" ? formatVersion(4, f as VersionFormat) : formatNameDate(Date.now(), f as DateFormat);
+  const current = (part: NamePart) => (part === "version" ? value.versionFormat : value.dateFormat);
+  const options = (part: NamePart): readonly string[] => (part === "version" ? VERSION_FORMATS : DATE_FORMATS);
+  const hint = (part: NamePart, f: string) => (part === "version" ? VERSION_HINT[f as VersionFormat] : DATE_HINT[f as DateFormat]);
+  // 한 자리 번호인데 버전이 10개 이상인 그룹이 실제로 있으면 버전 칸에 경고 표시 (D-43)
+  const v1Risk = ONE_DIGIT.includes(value.versionFormat) && maxVersions >= 10;
+  const isDefault =
+    pattern.join() === DEFAULT_FMT.pattern.join() && value.versionFormat === DEFAULT_FMT.versionFormat && value.dateFormat === DEFAULT_FMT.dateFormat;
+
+  return (
+    <div className="pattern">
+      <span className="pattern-label">이름 모양</span>
+      <div className="pattern-row" ref={rowRef} role="list" aria-label="새 이름의 칸 순서예요. 칸을 끌거나 화살표 키로 옮기고, 눌러서 표기를 고를 수 있어요">
+        {pattern.map((part, i) => (
+          <span key={part} className="pattern-cell" role="listitem" data-cell={part}>
+            <button
+              type="button"
+              data-part={part}
+              className={`pattern-chip part-${part} ${dragging === part ? "is-dragging" : ""} ${menu === part ? "is-open" : ""} ${part === "version" && v1Risk ? "has-warn" : ""}`}
+              aria-label={`${PART_LABEL[part]}, ${i + 1}번째 칸. 화살표 키로 옮길 수 있어요`}
+              aria-haspopup={part === "base" ? undefined : "menu"}
+              aria-expanded={part === "base" ? undefined : menu === part}
+              onPointerDown={(e) => {
+                e.preventDefault(); // 끄는 동안 글자가 선택되지 않게
+                movedRef.current = false;
+                setDragging(part);
+              }}
+              onClick={() => {
+                if (movedRef.current || part === "base") return;
+                setMenu(menu === part ? null : part);
+              }}
+              onFocus={() => setFocusPart(part)}
+              onBlur={() => setFocusPart(null)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowLeft") move(part, i - 1);
+                if (e.key === "ArrowRight") move(part, i + 1);
+              }}
+            >
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden>
+                <circle cx="9" cy="6" r="1.6" />
+                <circle cx="15" cy="6" r="1.6" />
+                <circle cx="9" cy="12" r="1.6" />
+                <circle cx="15" cy="12" r="1.6" />
+                <circle cx="9" cy="18" r="1.6" />
+                <circle cx="15" cy="18" r="1.6" />
+              </svg>
+              {PART_LABEL[part]}
+              {part !== "base" && (
+                <>
+                  <span className="pattern-fmt">
+                    <Swap k={current(part)}>{sample(part, current(part))}</Swap>
+                  </span>
+                  <svg className="pattern-caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </>
+              )}
+            </button>
+            {/* 버전 칸 오른쪽 위 모서리에 붙는 경고 (칸 버튼 밖이라 눌러도 표기 고르기가 안 열림) */}
+            {part === "version" && v1Risk && <WarnTip label={V1_WARN} />}
+            {menu === part && (
+              <div className="pattern-menu" role="menu" aria-label={`${PART_LABEL[part]} 표기`}>
+                {options(part).map((f) => (
+                  <div key={f} className="pattern-menu-row" role="none">
+                    <button
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={current(part) === f}
+                      className={current(part) === f ? "is-on" : ""}
+                      onClick={() => {
+                        onChange(part === "version" ? { ...value, versionFormat: f as VersionFormat } : { ...value, dateFormat: f as DateFormat });
+                        setMenu(null);
+                      }}
+                    >
+                      <span className="pattern-menu-sample">{sample(part, f)}</span>
+                      <span className="pattern-menu-hint">{hint(part, f)}</span>
+                    </button>
+                    {part === "version" && ONE_DIGIT.includes(f as VersionFormat) && <WarnTip label={V1_WARN} />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </span>
+        ))}
+        <span className="pattern-sep" aria-hidden>
+          .확장자
+        </span>
+      </div>
+      {/* 늘 그려 두고 바뀐 게 있을 때만 보이게 (나타나고 사라질 때 모두 애니메이션). 숨으면 visibility로 탭 순서에서도 빠짐 */}
+      <button type="button" className={`pattern-reset ${isDefault ? "" : "is-shown"}`} aria-hidden={isDefault} onClick={() => onChange(DEFAULT_FMT)}>
+        원래대로
+      </button>
+    </div>
+  );
+}
+
+/** 드롭 영역에 부채꼴로 펼쳐 보여 줄 형식 (팀플에서 자주 오가는 것) */
+const DROP_FAN = ["pptx", "docx", "hwp", "pdf", "xlsx"];
 
 function FileTypeIcon({ name }: { name: string }) {
   const dot = name.lastIndexOf(".");
@@ -252,7 +638,15 @@ export default function FileVersionApp() {
   const [showRename, setShowRename] = useState(false);
   const [bases, setBases] = useState<Record<string, string | undefined>>({});
   const [drafts, setDrafts] = useState<Record<string, string | undefined>>({});
+  // STEP 3: 기본 이름은 평소엔 글자, 연필을 누른 그룹 하나만 입력칸 (D-40). Esc면 고치기 전 이름으로
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const editStartRef = useRef("");
+  const ESCAPED = "\u0000esc"; // editStartRef에 넣는 표시: Esc로 닫음
   const [scope, setScope] = useState<Scope>("latest");
+  const [dlSent, setDlSent] = useState(false); // [내려받기]를 누른 뒤 잠깐 초록 (D-46)
+  const dlTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(dlTimer.current), []);
+  const [nameFmt, setNameFmt] = useState<NameFmt>(DEFAULT_FMT); // 새 이름 칸 순서·표기 (D-42, D-43)
 
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -347,7 +741,33 @@ export default function FileVersionApp() {
 
   // ---------- 업로드 (F-01, src/analysis/upload) ----------
 
-  async function addFiles(files: File[]) {
+  // zip은 브라우저에서 풀어 안의 파일을 대신 올림 (D-39). 안 파일의 20MB 한도·같은 파일 검사는 아래 acceptFiles가 그대로 함
+  async function expandZips(files: File[]): Promise<File[]> {
+    const out: File[] = [];
+    for (const f of files) {
+      if (!isZip(f.name)) {
+        out.push(f);
+        continue;
+      }
+      if (f.size > ZIP_MAX) {
+        toast(MSG.M12(f.name), "warn");
+        continue;
+      }
+      try {
+        const r = unzipFiles(new Uint8Array(await f.arrayBuffer()));
+        for (const name of r.tooLarge) toast(MSG.M03(name), "warn");
+        if (r.skipped.length) toast(MSG.M09(f.name, r.skipped.length), "warn");
+        if (!r.files.length && !r.tooLarge.length && !r.skipped.length) toast(MSG.M11(f.name), "warn");
+        out.push(...r.files.map((x) => new File([x.bytes as Uint8Array<ArrayBuffer>], x.name, { lastModified: x.lastModified })));
+      } catch {
+        toast(MSG.M10(f.name), "warn");
+      }
+    }
+    return out;
+  }
+
+  async function addFiles(picked: File[]) {
+    const files = await expandZips(picked);
     const current = itemsRef.current;
     const { accepted, same, tooLarge } = acceptFiles(
       current.map((x) => x.file),
@@ -386,9 +806,9 @@ export default function FileVersionApp() {
     if (files.length) void addFiles(files);
   }
 
-  // [예시 파일로 해보기]: public/samples/demo 파일을 manifest 날짜로 불러옴 (D-14)
+  // [체험하기]: public/samples/demo 파일을 manifest 날짜로 불러옴 (D-14, D-36)
   async function onLoadSamples() {
-    if (itemsRef.current.length > 0 && !window.confirm("지금 올린 파일 목록을 비우고 예시 파일을 넣을까요?")) return;
+    if (itemsRef.current.length > 0 && !window.confirm("지금 목록을 비우고 예시 파일로 바꿀까요?")) return;
     try {
       const files = await loadSamples();
       resetResults();
@@ -406,11 +826,6 @@ export default function FileVersionApp() {
   function clearAll() {
     commitItems([]);
     resetResults();
-  }
-
-  function restart() {
-    clearAll();
-    setSort(null);
   }
 
   const sortedItems = (() => {
@@ -452,12 +867,39 @@ export default function FileVersionApp() {
   // ---------- 분석 결과 (S-03) ----------
 
   const nameById = new Map(items.map((x) => [x.input.id, x.file.name]));
+  const metaById = new Map(items.map((x) => [x.input.id, x.meta]));
+  // STEP 2 파일 행의 날짜 칸: 1단계 표와 같은 순서 (수정 날짜 · 만든 시각 · 저장 시각, D-30. 표시만 하고 순위에는 안 씀)
+  // 칸이 좁아서 연도는 빼고, 마우스를 올리면 전체 날짜
+  const dateCell = (ts: number | undefined, className = "") => (
+    <span className={`file-cell ${className}`} title={ts ? formatDate(ts) : undefined}>
+      {ts ? formatDate(ts).slice(5) : "—"}
+    </span>
+  );
+  const dateCells = (id: string, lastModified: number) => (
+    <>
+      {dateCell(lastModified)}
+      {dateCell(metaById.get(id)?.created, "col-meta")}
+      {dateCell(metaById.get(id)?.saved, "col-meta")}
+    </>
+  );
+  const gridHead = (
+    <div className="file-grid-head">
+      <span />
+      <span>파일명</span>
+      <span title="파일에 기록된 수정 날짜예요. 카톡으로 받은 파일은 받은 시각일 수 있어요">수정 날짜</span>
+      <span className="col-meta" title="문서 안에 기록된 처음 만든 시각이에요 (docx·pptx·xlsx만 있어요)">만든 시각</span>
+      <span className="col-meta" title="문서 안에 기록된 마지막 저장 시각이에요 (docx·pptx·xlsx만 있어요)">저장 시각</span>
+      <span />
+    </div>
+  );
 
   // 왼쪽에 보여 줄 그룹: 고른 칩, 없으면 첫 그룹 (그룹이 없으면 단독 파일)
   const activeKey =
     analysis && (analysis.groups.some((g) => g.key === activeGroup) || (activeGroup === SINGLES && analysis.singles.length))
       ? activeGroup
       : (analysis?.groups[0]?.key ?? (analysis?.singles.length ? SINGLES : null));
+  const activeG = analysis?.groups.find((g) => g.key === activeKey);
+  const reasonRef = useSmoothHeight<HTMLDivElement>(); // 추천 이유 상자 높이가 바뀌면 아래 목록도 부드럽게 밀리게
 
   // 칩을 누르면 그 그룹을 보여 주고, 오른쪽도 그 그룹의 최신 후보(단독이면 첫 파일)로
   function openGroup(key: string) {
@@ -530,8 +972,9 @@ export default function FileVersionApp() {
 
   const choices = Object.fromEntries(Object.entries(selected).filter(([, v]) => v)) as Record<string, string>;
   const baseNames = Object.fromEntries(Object.entries(bases).filter(([, v]) => v)) as Record<string, string>;
-  const rows: RenameRow[] = analysis ? rename(analysis, { scope, choices, baseNames }) : [];
+  const rows: RenameRow[] = analysis ? rename(analysis, { scope, choices, baseNames, ...nameFmt }) : [];
   const included = rows.filter((r) => r.download && r.to);
+  const sizeById = new Map(items.map((x) => [x.input.id, x.input.size]));
 
   function onBaseChange(g: Group, value: string) {
     setDrafts((d) => ({ ...d, [g.key]: value }));
@@ -552,6 +995,10 @@ export default function FileVersionApp() {
     if (!result) return;
     saveBlob(new Blob([result.data as BlobPart]), result.filename);
     toast(MSG.M08(result.count), "done");
+    // 버튼도 잠깐 초록으로 "다운로드를 요청했어요!" (브라우저가 실제로 저장을 마쳤는지는 알 수 없어서 "요청"으로 씀)
+    setDlSent(true);
+    window.clearTimeout(dlTimer.current);
+    dlTimer.current = window.setTimeout(() => setDlSent(false), 2500);
   }
 
   // ---------- 화면 ----------
@@ -602,7 +1049,7 @@ export default function FileVersionApp() {
         <SectionHead
           id="s02-title"
           title="파일 업로드"
-          desc="같은 과제의 여러 버전 파일을 한 번에 올려 주세요. 파일은 이 브라우저 밖으로 나가지 않아요."
+          desc="같은 과제의 여러 버전을 한꺼번에 올려 주세요. 올린 파일은 이 브라우저 밖으로 나가지 않아요."
         />
 
         {/* 왼쪽 = 파일 목록, 오른쪽 = 업로드 영역 (폰에서는 업로드 영역이 위) */}
@@ -612,8 +1059,10 @@ export default function FileVersionApp() {
           {items.length > 0 && (
             <>
               <div className="table-head">
-                <span className="count">파일 {items.length}개</span>
-                <button type="button" className="btn small" onClick={clearAll}>
+                <span className="count">
+                  파일 <Swap k={items.length}>{items.length}</Swap>개
+                </span>
+                <button type="button" className="btn small danger" onClick={clearAll}>
                   모두 지우기
                 </button>
               </div>
@@ -622,10 +1071,9 @@ export default function FileVersionApp() {
                   <thead>
                     <tr>
                       {sortTh("name", "파일명")}
-                      {sortTh("date", "수정 날짜", "", "파일 속성의 수정 날짜. 카톡에서 받으면 받은 시각일 수 있어요")}
-                      {sortTh("created", "만든 시각", "col-meta", "문서 안에 적힌 처음 만든 시각 (docx·pptx·xlsx)")}
-                      {sortTh("saved", "저장 시각", "col-meta", "문서 안에 적힌 마지막 저장 시각 (docx·pptx·xlsx)")}
-                      {sortTh("revision", "저장 횟수", "col-meta", "문서 안에 적힌 저장 횟수 (docx·pptx·xlsx)")}
+                      {sortTh("date", "수정 날짜", "", "파일에 기록된 수정 날짜예요. 카톡으로 받은 파일은 받은 시각일 수 있어요")}
+                      {sortTh("created", "만든 시각", "col-meta", "문서 안에 기록된 처음 만든 시각이에요 (docx·pptx·xlsx만 있어요)")}
+                      {sortTh("saved", "저장 시각", "col-meta", "문서 안에 기록된 마지막 저장 시각이에요 (docx·pptx·xlsx만 있어요)")}
                       {sortTh("size", "크기", "col-size")}
                       <th className="col-remove">
                         <span className="sr-only">빼기</span>
@@ -644,7 +1092,6 @@ export default function FileVersionApp() {
                         <td className="nowrap">{formatDate(x.file.lastModified)}</td>
                         <td className="nowrap col-meta">{x.meta.created ? formatDate(x.meta.created) : "—"}</td>
                         <td className="nowrap col-meta">{x.meta.saved ? formatDate(x.meta.saved) : "—"}</td>
-                        <td className="nowrap col-meta">{x.meta.revision ? `${x.meta.revision}회` : "—"}</td>
                         <td className="nowrap col-size">{formatSize(x.file.size)}</td>
                         <td className="col-remove">
                           <button
@@ -690,22 +1137,26 @@ export default function FileVersionApp() {
           }}
           onDrop={onDrop}
         >
-          <span className="drop-icon" aria-hidden>
-            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 16V4" />
-              <path d="M7 9l5-5 5 5" />
-              <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-            </svg>
+          {/* 여러 형식을 올릴 수 있다는 걸 보여 주는 부채꼴 종이들. 가운데가 맨 위 */}
+          <span className="drop-fan" aria-hidden>
+            {DROP_FAN.map((ext, n) => {
+              const i = n - (DROP_FAN.length - 1) / 2;
+              return (
+                <span key={ext} className="fan-slot" style={{ "--i": i, zIndex: 10 - Math.abs(i) } as React.CSSProperties}>
+                  <span className="fan-card">
+                    <FileTypeIcon name={`a.${ext}`} />
+                  </span>
+                </span>
+              );
+            })}
           </span>
           <span className="drop-text">
-            {items.length === 0 ? MSG.M01 : "파일을 더 끌어다 놓거나 여기를 눌러 추가할 수 있어요"}
+            <Swap k={items.length === 0 ? "empty" : "more"}>
+              {items.length === 0 ? MSG.M01 : "더 올리려면 여기에 끌어다 놓거나 눌러 주세요"}
+            </Swap>
           </span>
-          <span className="drop-sub">여러 파일을 한 번에 올릴 수 있어요 · 파일당 20MB까지</span>
+          <span className="drop-sub">여러 파일이나 zip도 한 번에 올릴 수 있어요 · 파일 하나에 20MB까지</span>
         </div>
-        {/* 드롭 영역 안에 두면 버튼 안의 버튼이 되므로 바로 아래에 둠 */}
-        <button type="button" className="btn sample-btn" onClick={onLoadSamples}>
-          예시 파일로 해보기
-        </button>
         </div>
         </div>
         <input
@@ -728,27 +1179,27 @@ export default function FileVersionApp() {
           <SectionHead
             id="s03-title"
             title="분석 결과"
-            desc="추천은 후보일 뿐이에요. 최신 파일이 다르면 직접 골라 주세요."
+            desc="추천은 후보예요. 실제 최신 파일이 다르면 직접 골라 주세요."
             aside={
               <dl className="stats" aria-label="분석 요약">
                 <div className="stat">
                   <dt>그룹</dt>
                   <dd>
-                    {analysis.groups.length}
+                    <Swap k={analysis.groups.length}>{analysis.groups.length}</Swap>
                     <small>개</small>
                   </dd>
                 </div>
                 <div className="stat">
                   <dt>단독</dt>
                   <dd>
-                    {analysis.singles.length}
+                    <Swap k={analysis.singles.length}>{analysis.singles.length}</Swap>
                     <small>개</small>
                   </dd>
                 </div>
                 <div className="stat">
                   <dt>중복</dt>
                   <dd>
-                    {analysis.duplicates}
+                    <Swap k={analysis.duplicates}>{analysis.duplicates}</Swap>
                     <small>개</small>
                   </dd>
                 </div>
@@ -767,6 +1218,7 @@ export default function FileVersionApp() {
                   key={g.key}
                   type="button"
                   className={`chip ${g.key === activeKey ? "is-active" : ""}`}
+                  data-ext={g.ext.toLowerCase()} // 고르면 그 형식의 대표 색으로 채움 (globals.css)
                   aria-pressed={g.key === activeKey}
                   onClick={() => openGroup(g.key)}
                 >
@@ -775,7 +1227,9 @@ export default function FileVersionApp() {
                     {g.baseName}
                     {g.ext && <span className="chip-ext">.{g.ext}</span>}
                   </span>
-                  <span className="chip-count">{g.files.length}</span>
+                  <span className="chip-count">
+                    <Swap k={g.files.length}>{g.files.length}</Swap>
+                  </span>
                 </button>
               );
             })}
@@ -787,10 +1241,58 @@ export default function FileVersionApp() {
                 onClick={() => openGroup(SINGLES)}
               >
                 단독 파일
-                <span className="chip-count">{analysis.singles.length}</span>
+                <span className="chip-count">
+                  <Swap k={analysis.singles.length}>{analysis.singles.length}</Swap>
+                </span>
               </button>
             )}
           </ChipScroller>
+          {/* 추천 이유는 칩과 목록 사이에 (카드 아래에 두면 파일이 많을 때 스크롤해야 보임) */}
+          {activeG && (() => {
+            // 추천과 다른 파일을 고르면 추천 이유 자리를 "직접 골랐어요"로 바꿔 씀 (D-44).
+            // choose()가 추천 파일을 다시 고르면 선택을 지우므로, 선택이 있으면 곧 추천과 다르다는 뜻
+            const pickedName = activeG.files.find((f) => f.id === selected[activeG.key])?.name;
+            const latestName = activeG.files.find((f) => f.id === activeG.latestId)?.name;
+            const own = !!pickedName;
+            return (
+              // 색은 배지와 같게: 직접 선택 파랑, 확인 필요 노랑, 최신 후보 초록
+              <div ref={reasonRef} className={`reason-bar ${own ? "is-chosen" : activeG.status === "확인 필요" ? "is-check" : ""}`} key={activeG.key}>
+                <span className="reason-icon" aria-hidden>
+                  {own ? (
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12.5l4.5 4.5L19 7.5" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 18h6" />
+                      <path d="M10 21h4" />
+                      <path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" />
+                    </svg>
+                  )}
+                </span>
+                <div className="reason-body">
+                  <span className="reason-label">{own ? "직접 선택" : "추천 이유"}</span>
+                  {/* key: 추천 ↔ 직접 선택, 직접 고른 파일끼리 바꿀 때도 새로 그려서 나타나는 애니메이션이 돎 */}
+                  {own ? (
+                    <div className="reason-content" key={`own-${selected[activeG.key]}`}>
+                      <p className="reason-text">&apos;{pickedName}&apos; 파일을 직접 골랐어요.</p>
+                      <p className="reason-detail">
+                        {latestName
+                          ? `추천은 '${latestName}' 파일이었지만, 고른 파일을 최신으로 보고 가장 큰 번호를 붙여요.`
+                          : "단서로는 고를 수 없던 그룹이라, 고른 파일을 최신으로 보고 가장 큰 번호를 붙여요."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="reason-content" key="rec">
+                      {/* 문구 틀(CLAUDE.md)에는 마침표가 없어서 화면에서만 붙임. 아래 자세한 설명과 문장 모양을 맞춤 */}
+                      <p className="reason-text">{activeG.reason}.</p>
+                      <p className="reason-detail">{reasonDetail(activeG)}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
           <Scrollable className="panel-body" grow>
           {/* key: 칩을 바꾸면 카드를 새로 그려서 나타나는 애니메이션이 돎 */}
           <div className="cards" key={activeKey ?? ""}>
@@ -806,6 +1308,8 @@ export default function FileVersionApp() {
                 </div>
                 <fieldset>
                   <legend className="sr-only">{g.baseName} 그룹의 최신 파일 고르기</legend>
+                  <div className="file-grid">
+                  {gridHead}
                   {g.files.map((f) => {
                     const checked = !f.duplicateOf && (selected[g.key] ?? g.latestId) === f.id;
                     return (
@@ -824,12 +1328,12 @@ export default function FileVersionApp() {
                           onFocus={() => setFocusId(f.id)}
                         />
                         <span className="file-main">
-                          <span className="file-name">{f.name}</span>
-                          <span className="file-date">{formatDate(f.lastModified)}</span>
+                          <SlideText className="file-name" text={f.name} />
                           {f.duplicateOf && (
-                            <span className="dup-note">{nameById.get(f.duplicateOf) ?? "다른 파일"}와 내용이 같아요</span>
+                            <span className="dup-note">&apos;{nameById.get(f.duplicateOf) ?? "다른"}&apos; 파일과 내용이 같아요</span>
                           )}
                         </span>
+                        {dateCells(f.id, f.lastModified)}
                         <span className="badges">
                           {badgesFor(g, f).map((b) => (
                             <BadgeLabel key={b} badge={b} />
@@ -838,13 +1342,8 @@ export default function FileVersionApp() {
                       </div>
                     );
                   })}
+                  </div>
                 </fieldset>
-                {g.reason && <p className="reason">추천 이유: {g.reason}</p>}
-                {selected[g.key] && (
-                  <p className="reason chosen">
-                    직접 고른 최신 파일: {g.files.find((f) => f.id === selected[g.key])?.name}
-                  </p>
-                )}
               </div>
             ))}
 
@@ -855,6 +1354,8 @@ export default function FileVersionApp() {
                   <span className="card-count">{analysis.singles.length}개</span>
                 </div>
                 <p className="hint small">비슷한 이름의 파일이 없어서 그룹으로 묶지 않았어요</p>
+                <div className="file-grid">
+                {gridHead}
                 {analysis.singles.map((f) => (
                   <div
                     className={`file-row ${f.duplicateOf ? "is-dup" : ""} ${f.id === focusResult?.id ? "is-focused" : ""}`}
@@ -863,15 +1364,16 @@ export default function FileVersionApp() {
                   >
                     <FileTypeIcon name={f.name} />
                     <span className="file-main">
-                      <span className="file-name">{f.name}</span>
-                      <span className="file-date">{formatDate(f.lastModified)}</span>
+                      <SlideText className="file-name" text={f.name} />
                       {f.duplicateOf && (
-                        <span className="dup-note">{nameById.get(f.duplicateOf) ?? "다른 파일"}와 내용이 같아요</span>
+                        <span className="dup-note">&apos;{nameById.get(f.duplicateOf) ?? "다른"}&apos; 파일과 내용이 같아요</span>
                       )}
                     </span>
+                    {dateCells(f.id, f.lastModified)}
                     <span className="badges">{f.duplicateOf && <BadgeLabel badge="중복" />}</span>
                   </div>
                 ))}
+                </div>
               </div>
             )}
           </div>
@@ -904,71 +1406,182 @@ export default function FileVersionApp() {
         <section className="panel" aria-labelledby="s04-title">
           <SectionHead
             id="s04-title"
-            title="이름 변경·내려받기"
-            desc="새 이름 규칙은 기본이름_v번호(01, 02…)_수정날짜예요. 그룹의 기본 이름은 직접 고칠 수 있어요."
+            title="이름 변경"
+            desc="번호는 오래된 버전부터 v01, v02…로 붙여요. 이름 모양의 칸은 끌어서 순서를 바꾸고, 기본 이름은 눌러서 고칠 수 있어요."
           />
 
+          {/* 왼쪽: 이름 모양 + 한 줄에 그룹 하나 (기본 이름 → 받을 파일, D-40·D-42). 오른쪽: 실제로 받을 파일 미리보기 (D-41) */}
+          <div className="result-grid">
+          <div className="result-list">
+          <PatternEditor
+            value={nameFmt}
+            onChange={setNameFmt}
+            maxVersions={Math.max(0, ...analysis.groups.map((g) => g.files.filter((f) => !f.duplicateOf).length))}
+          />
+          <div className="rename-head" aria-hidden>
+            <span>기본 이름</span>
+            <span>새 이름</span>
+            <span>원래 이름</span>
+          </div>
           <Scrollable className="panel-body" grow>
-          <div className="base-inputs">
-            {analysis.groups.map((g) => {
+          <ul className="rename-list">
+            {analysis.groups.map((g, gi) => {
               const value = drafts[g.key] ?? bases[g.key] ?? g.baseName;
               const empty = !value.trim();
+              const mine = rows.filter((r) => g.files.some((f) => f.id === r.id));
+              const pickId = selected[g.key] ?? g.latestId;
+              const main = mine.find((r) => r.id === pickId);
+              const older = mine.filter((r) => r.id !== pickId && !r.duplicate && r.to).length; // 이전 버전 수 (범위와 상관없이)
+              const dups = mine.filter((r) => r.duplicate).length;
               return (
-                <label className="base-input" key={g.key}>
-                  <span className="base-label">
-                    그룹 · {g.files[0].name} 외 {g.files.length - 1}개
+                <li className="rename-line" key={g.key} style={stagger(gi)}>
+                  <FileTypeIcon name={g.files[0].name} />
+                  {editingKey === g.key ? (
+                    <input
+                      type="text"
+                      className="base-input"
+                      aria-label={`${g.baseName} 그룹의 기본 이름`}
+                      value={value}
+                      aria-invalid={empty}
+                      autoFocus
+                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) => onBaseChange(g, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                        if (e.key === "Escape") {
+                          onBaseChange(g, editStartRef.current);
+                          editStartRef.current = ESCAPED;
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      onBlur={() => {
+                        // Esc로 되돌린 직후엔 빈칸 검사를 건너뜀 (아직 지운 값이 state에 남아 있어서 M-06이 잘못 뜸)
+                        if (editStartRef.current !== ESCAPED) onBaseBlur(g);
+                        setEditingKey(null);
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="base-name"
+                      aria-label={`기본 이름 '${value}' 고치기`}
+                      onClick={() => {
+                        editStartRef.current = value;
+                        setEditingKey(g.key);
+                      }}
+                    >
+                      {/* key로 바뀔 때 새로 그림 (Swap으로 감싸면 inline-block이라 긴 이름의 …가 안 붙음) */}
+                      <span className="base-name-text swap" key={value}>
+                        {value}
+                      </span>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                      </svg>
+                    </button>
+                  )}
+                  <span className="rename-arrow" aria-hidden>
+                    →
                   </span>
-                  <input
-                    type="text"
-                    value={value}
-                    aria-invalid={empty}
-                    onChange={(e) => onBaseChange(g, e.target.value)}
-                    onBlur={() => onBaseBlur(g)}
+                  {/* 새 이름이 바뀌면 떠오르며 바뀜. 기본 이름을 치는 동안은 글자마다 출렁이지 않게 다시 그리지 않음 */}
+                  <SlideText
+                    key={editingKey === g.key ? "editing" : (main?.to ?? "")}
+                    className="rename-to swap"
+                    text={main?.to ?? "—"}
                   />
+                  <span className="rename-sub">
+                    <span className="rename-from swap" title={main?.from} key={main?.from}>
+                      <span className="sub-label">원래 이름 </span>
+                      {main?.from}
+                    </span>
+                    {/* 이전 버전·중복은 작은 알약으로. 문장은 마우스를 올리면(title)·화면 낭독기(aria-label)로.
+                        이전 버전 알약은 늘 그려 두고 "이전 버전도 함께 받기"를 켜고 끌 때 펼쳐지고 접히게 */}
+                    {older > 0 && (
+                      <span
+                        className={`rename-note reveal ${scope === "all" ? "is-shown" : ""}`}
+                        aria-hidden={scope !== "all"}
+                        title={`이전 버전 ${older}개도 함께 받아요`}
+                      >
+                        <span aria-label={`이전 버전 ${older}개도 함께 받아요`}>이전 {older}개</span>
+                      </span>
+                    )}
+                    {dups > 0 && (
+                      <span className="rename-note is-dup" title={`중복 ${dups}개는 빼요`}>
+                        <span aria-label={`중복 ${dups}개는 빼요`}>중복 {dups}개 제외</span>
+                      </span>
+                    )}
+                  </span>
                   {empty && <span className="field-error">{MSG.M06}</span>}
-                </label>
+                </li>
               );
             })}
-          </div>
-
-          <div className="table-wrap">
-            <table className="preview">
-              <thead>
-                <tr>
-                  <th>원래 이름</th>
-                  <th aria-hidden />
-                  <th>새 이름</th>
-                  <th className="nowrap">내려받기</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => {
-                  const off = r.duplicate || !r.to;
-                  const inc = r.download && !!r.to;
-                  return (
-                    <tr key={r.id} style={stagger(i)} className={off ? "excluded" : inc ? "" : "skipped"}>
-                      <td className="name">
-                        <span className="name-cell">
-                          <FileTypeIcon name={r.from} />
-                          <span>{r.from}</span>
-                        </span>
-                      </td>
-                      <td aria-hidden>→</td>
-                      <td className="name">{r.duplicate ? "제외 (내용이 같은 중복 파일)" : (r.to ?? "—")}</td>
-                      <td className="nowrap">
-                        <span className={`status ${off ? "status-off" : inc ? "status-on" : "status-skip"}`}>
-                          {off ? "제외" : inc ? "포함" : "안 받음"}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+            {analysis.singles.map((f, i) => {
+              const r = rows.find((x) => x.id === f.id);
+              return (
+                <li className="rename-line" key={f.id} style={stagger(analysis.groups.length + i)}>
+                  <FileTypeIcon name={f.name} />
+                  <span className="single-tag">단독 파일</span>
+                  <span className="rename-arrow" aria-hidden>
+                    →
+                  </span>
+                  <SlideText
+                    key={r?.to ?? "off"}
+                    className={`rename-to swap ${r?.to ? "" : "is-off"}`}
+                    text={r?.to ?? "중복 파일이라 받지 않아요"}
+                  />
+                  <span className="rename-sub">
+                    <span className="rename-from" title={f.name}>
+                      <span className="sub-label">원래 이름 </span>
+                      {f.name}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
           </Scrollable>
+          </div>
 
-          <p className="hint small">원본 파일은 바뀌지 않아요. 새 이름의 사본만 내려받아요.</p>
+          <aside className="download-panel" aria-label="받을 파일">
+            <h3 className="dl-title">받을 파일</h3>
+            <div className="dl-summary">
+              <FileTypeIcon name={included.length === 1 ? included[0].to! : "a.zip"} />
+              <div className="dl-summary-text">
+                {(() => {
+                  const dlName = included.length === 0 ? "받을 파일이 없어요" : included.length === 1 ? included[0].to! : zipName();
+                  const meta = `파일 ${included.length}개 · ${formatSize(included.reduce((s, r) => s + (sizeById.get(r.id) ?? 0), 0))}`;
+                  return (
+                    <>
+                      <SlideText key={dlName} className="dl-name swap" text={dlName} />
+                      <span className="dl-meta">
+                        <Swap k={meta}>{meta}</Swap>
+                      </span>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+            {/* F-03-03 범위 선택: 꺼짐 = [최신 파일만](기본), 켜짐 = [전체 버전] (D-41) */}
+            <label className="dl-check">
+              <input type="checkbox" checked={scope === "all"} onChange={(e) => setScope(e.target.checked ? "all" : "latest")} />
+              <span>
+                이전 버전도 함께 받기
+                <small>
+                  <Swap k={scope}>{scope === "all" ? "v01부터 모든 버전을 순서대로 받아요" : "그룹마다 최신 파일만 받아요"}</Swap>
+                </small>
+              </span>
+            </label>
+            <ul className="dl-files" key={scope}>
+              {included.map((r, i) => (
+                <li key={r.id} style={stagger(i)}>
+                  <FileTypeIcon name={r.to!} />
+                  <SlideText key={r.to!} className="swap" text={r.to!} />
+                </li>
+              ))}
+            </ul>
+            <p className="hint small">원본은 그대로 두고, 새 이름을 붙인 사본만 내려받아요.</p>
+          </aside>
+          </div>
         </section>
       )}
 
@@ -982,6 +1595,10 @@ export default function FileVersionApp() {
             <>
               {items.length === 1 && <p className="hint warn">{MSG.M02}</p>}
               <span className="spacer" />
+              {/* [체험하기] = 예시 파일 불러오기 (F-01-03, D-36) */}
+              <button type="button" className="btn" disabled={analyzing || busy} onClick={onLoadSamples}>
+                체험하기
+              </button>
               <button
                 type="button"
                 className={`btn primary ${overlay === "done" ? "is-done" : ""}`}
@@ -989,21 +1606,23 @@ export default function FileVersionApp() {
                 aria-busy={analyzing}
                 onClick={() => runAnalysis(items, true)}
               >
-                {overlay === "done" ? (
-                  <>
-                    <svg className="btn-check" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <path d="M5 12.5l4.5 4.5L19 7.5" />
-                    </svg>
-                    분석이 완료되었어요!
-                  </>
-                ) : analyzing ? (
-                  "분석 중..."
-                ) : (
-                  <>
-                    분석하기
-                    <ArrowIcon />
-                  </>
-                )}
+                <StableLabel
+                  current={overlay === "done" ? 2 : analyzing ? 1 : 0}
+                  states={[
+                    <>
+                      분석하기
+                      <ArrowIcon />
+                    </>,
+                    <>
+                      <span className="btn-spinner" aria-hidden />
+                      분석 중...
+                    </>,
+                    <>
+                      <CheckMark />
+                      분석이 끝났어요!
+                    </>,
+                  ]}
+                />
               </button>
             </>
           )}
@@ -1014,33 +1633,43 @@ export default function FileVersionApp() {
                 이전
               </button>
               <button type="button" className="btn primary" onClick={goRename} disabled={analyzing}>
-                이름 바꾸기
-                <ArrowIcon />
+                <StableLabel
+                  states={[
+                    <>
+                      이름 바꾸기
+                      <ArrowIcon />
+                    </>,
+                  ]}
+                />
               </button>
             </>
           )}
           {view === 3 && analysis && showRename && (
             <>
-              <fieldset className="scope">
-                <legend className="sr-only">내려받을 범위</legend>
-                <label>
-                  <input type="radio" name="scope" checked={scope === "latest"} onChange={() => setScope("latest")} />
-                  최신 파일만
-                </label>
-                <label>
-                  <input type="radio" name="scope" checked={scope === "all"} onChange={() => setScope("all")} />
-                  전체 버전
-                </label>
-              </fieldset>
               <span className="spacer" />
-              <button type="button" className="btn" onClick={restart}>
-                처음부터 다시
-              </button>
               <button type="button" className="btn" onClick={() => setView(2)}>
                 이전
               </button>
-              <button type="button" className="btn primary" disabled={included.length === 0} onClick={download}>
-                내려받기 ({included.length}개)
+              {/* 개수는 오른쪽 "받을 파일"에 있으니 버튼은 아이콘만. 누르면 잠깐 초록 (D-46) */}
+              <button
+                type="button"
+                className={`btn primary ${dlSent ? "is-sent" : ""}`}
+                disabled={included.length === 0}
+                onClick={download}
+              >
+                <StableLabel
+                  current={dlSent ? 1 : 0}
+                  states={[
+                    <>
+                      내려받기
+                      <DownloadIcon />
+                    </>,
+                    <>
+                      <CheckMark />
+                      다운로드를 요청했어요!
+                    </>,
+                  ]}
+                />
               </button>
             </>
           )}
