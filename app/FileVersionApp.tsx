@@ -487,6 +487,7 @@ export default function FileVersionApp() {
           )}
         </div>
 
+        <div className="upload-side">
         <div
           className={`dropzone ${dragOver ? "drag" : ""}`}
           role="button"
@@ -523,6 +524,11 @@ export default function FileVersionApp() {
           </span>
           <span className="drop-sub">여러 파일을 한 번에 올릴 수 있어요 · 파일당 20MB까지</span>
         </div>
+        {/* 드롭 영역 안에 두면 버튼 안의 버튼이 되므로 바로 아래에 둠 */}
+        <button type="button" className="btn sample-btn" onClick={onLoadSamples}>
+          예시 파일로 해보기
+        </button>
+        </div>
         </div>
         <input
           ref={inputRef}
@@ -536,12 +542,6 @@ export default function FileVersionApp() {
         />
 
         <div className="actions">
-          <button type="button" className="btn" onClick={() => inputRef.current?.click()}>
-            파일 선택
-          </button>
-          <button type="button" className="btn" onClick={onLoadSamples}>
-            예시 파일로 해보기
-          </button>
           <span className="spacer" />
           <button
             type="button"

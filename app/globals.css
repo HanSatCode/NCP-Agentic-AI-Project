@@ -1173,9 +1173,21 @@ main {
   font-size: 14px;
   color: var(--muted);
 }
+/* 오른쪽 칸: 드롭 영역이 늘어나고 [예시 파일로 해보기]는 바로 아래 */
+.upload-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
 .upload-grid .dropzone {
+  flex: 1;
   margin-top: 0;
   justify-content: center;
+}
+.sample-btn {
+  flex: none;
+  width: 100%;
 }
 .drop-icon,
 .table-head .btn {
@@ -1195,8 +1207,10 @@ main {
     grid-template-columns: 1fr;
     grid-template-rows: none;
   }
-  .upload-grid .dropzone {
+  .upload-side {
     order: -1;
+  }
+  .upload-grid .dropzone {
     min-height: 200px;
   }
   .list-empty {
