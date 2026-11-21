@@ -47,7 +47,11 @@ export async function toInputFiles(files: File[], startOrder: number, batch: num
 }
 
 // [예시 파일로 해보기]: public/samples/manifest.json의 demo 파일을 받아 manifest의 수정 날짜를 넣은 File로 만든다 (D-14)
-export async function loadSamples(fetchFn: typeof fetch = fetch, base = "/samples/"): Promise<File[]> {
+// base: 하위 경로에 배포하면 앞에 그 경로가 붙는다 (next.config.ts의 NEXT_PUBLIC_BASE_PATH)
+export async function loadSamples(
+  fetchFn: typeof fetch = fetch,
+  base = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/samples/`,
+): Promise<File[]> {
   const res = await fetchFn(`${base}manifest.json`);
   if (!res.ok) throw new Error("예시 파일 목록을 불러오지 못했어요");
   const manifest = (await res.json()) as Record<string, { lastModified: string }>;
