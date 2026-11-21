@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "팀플 파일 버전 도우미",
-  description: "최종_진짜최종_v3는 이제 그만. 팀 프로젝트 파일 버전 관리 도우미",
+  title: "파일 버전 정리",
+  description: "비슷한 파일을 올리면 최신 버전을 찾아 이름을 정리해 드려요",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -13,8 +13,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <nav style={{ display: "flex", gap: 16, marginBottom: 24 }}>
           <Link href="/">홈</Link>
           <Link href="/upload">업로드</Link>
-          <Link href="/history">히스토리</Link>
-          <Link href="/compare">비교</Link>
         </nav>
         <main>{children}</main>
       </body>
