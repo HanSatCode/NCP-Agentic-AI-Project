@@ -1,10 +1,13 @@
 "use client";
 
 // 분석 화면에서 파일 열어 보기
-// 이미지·PDF·글자 파일은 바로 미리 보고, 그 밖의 형식(pptx, docx 등)은 원본을 내려받아 열게 한다
+// 이미지·PDF·글자 파일은 브라우저가 바로 보여 주고, docx·pptx는 라이브러리로 그려서 보여 준다
+// (docx-preview, @aiden0z/pptx-renderer. 못 그리면 안의 글자만). 그 밖의 형식은 원래 프로그램으로 열어 보라고 안내한다
 // 파일은 서버로 보내지 않고 브라우저 안에서만 읽는다
+// PreviewBody는 분석 화면 오른쪽 파일 정보에도 쓴다
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { readDocText } from "@/src/analysis/metadata.ts";
 
 const IMAGE_EXT = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"];
 const TEXT_EXT = ["txt", "md", "csv", "tsv", "json", "xml", "html", "htm", "css", "js", "ts", "tsx", "jsx", "py", "java", "c", "cpp", "h", "log", "yml", "yaml", "sql"];
@@ -15,6 +18,8 @@ type View =
   | { kind: "image"; url: string }
   | { kind: "pdf"; url: string }
   | { kind: "text"; text: string; cut: boolean }
+  | { kind: "office" } // docx·pptx를 라이브러리로 그림
+  | { kind: "doc"; text: string } // 그리지 못했을 때 docx·pptx에서 꺼낸 글자
   | { kind: "none" };
 
 function extOf(name: string) {
@@ -52,9 +57,9 @@ function formatDate(ts: number) {
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export default function FilePreview({ file, onClose }: { file: File; onClose: () => void }) {
+/** 파일 내용 미리보기 (팝업·분석 화면 오른쪽 공용) */
+export function PreviewBody({ file }: { file: File }) {
   const [view, setView] = useState<View>({ kind: "loading" });
-  const closeRef = useRef<HTMLButtonElement>(null);
   const ext = extOf(file.name);
 
   // 내용 읽기
@@ -72,6 +77,10 @@ export default function FilePreview({ file, onClose }: { file: File; onClose: ()
         setView({ kind: "pdf", url });
         return;
       }
+      if (ext === "docx" || ext === "pptx") {
+        setView({ kind: "office" });
+        return;
+      }
       const head = new Uint8Array(await file.slice(0, MAX_TEXT).arrayBuffer());
       if (!alive) return;
       if (file.type.startsWith("text/") || TEXT_EXT.includes(ext) || looksLikeText(head)) {
@@ -85,6 +94,116 @@ export default function FilePreview({ file, onClose }: { file: File; onClose: ()
       if (url) URL.revokeObjectURL(url);
     };
   }, [file, ext]);
+
+  // 라이브러리가 못 그리면 안의 글자라도 보여 줌
+  const officeFailed = useCallback(async () => {
+    const text = readDocText(file.name, new Uint8Array(await file.arrayBuffer()));
+    setView(text === null ? { kind: "none" } : { kind: "doc", text });
+  }, [file]);
+
+  return (
+    <div className="viewer-body">
+      {view.kind === "office" && <OfficePreview key={file.name + file.size} file={file} ext={ext} onFail={officeFailed} />}
+      {view.kind === "loading" && <p className="viewer-empty">파일을 여는 중...</p>}
+      {view.kind === "image" && <img className="viewer-image" src={view.url} alt={file.name} />}
+      {view.kind === "pdf" && <iframe className="viewer-pdf" src={view.url} title={file.name} />}
+      {view.kind === "text" && (
+        <>
+          <pre className="viewer-text">{view.text || "(내용이 비어 있어요)"}</pre>
+          {view.cut && <p className="viewer-note">앞부분 200KB만 보여주고 있어요</p>}
+        </>
+      )}
+      {view.kind === "doc" && (
+        <>
+          <pre className="viewer-text viewer-doc">{view.text || "(글자가 없어요)"}</pre>
+          <p className="viewer-note">서식과 그림은 빼고 글자만 보여 주고 있어요</p>
+        </>
+      )}
+      {view.kind === "none" && (
+        <div className="viewer-empty">
+          <p>
+            <strong>{ext ? `.${ext}` : "확장자 없는"} 파일은 브라우저에서 바로 볼 수 없어요.</strong>
+          </p>
+          <p>내 컴퓨터에서 원래 프로그램으로 열어 확인해 주세요.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** docx·pptx를 브라우저 안에서 그림. 라이브러리는 이 파일을 볼 때만 불러옴(처음 화면을 무겁게 하지 않음) */
+function OfficePreview({ file, ext, onFail }: { file: File; ext: string; onFail: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current!;
+    let alive = true;
+    let viewer: { destroy(): void } | null = null;
+    let ro: ResizeObserver | null = null;
+    const ctrl = new AbortController();
+    (async () => {
+      try {
+        const buf = await file.arrayBuffer();
+        if (!alive) return;
+        if (ext === "docx") {
+          const { renderAsync } = await import("docx-preview");
+          if (!alive) return;
+          await renderAsync(buf, el, undefined, { inWrapper: true, breakPages: true, renderComments: false });
+          // 쪽 전체 폭(A4 약 800px)이 칸에 들어오게 줄임. 칸 크기가 바뀌면 다시 맞춤
+          const wrapper = el.querySelector<HTMLElement>(".docx-wrapper"); // 첫 자식은 라이브러리가 넣은 <style>
+          if (wrapper) {
+            // 쪽은 가운데 정렬이라 wrapper.scrollWidth로는 왼쪽으로 넘친 폭이 안 잡힘 → 가장 넓은 쪽 폭 + 좌우 여백으로 잼
+            const fit = () => {
+              wrapper.style.zoom = "1";
+              const pages = [...wrapper.querySelectorAll<HTMLElement>("section.docx")];
+              const pad = parseFloat(getComputedStyle(wrapper).paddingLeft) * 2;
+              const natural = Math.max(0, ...pages.map((p) => p.offsetWidth)) + pad;
+              if (natural > 0) wrapper.style.zoom = String(Math.min(1, el.clientWidth / natural));
+            };
+            fit();
+            ro = new ResizeObserver(fit);
+            ro.observe(el);
+          }
+        } else {
+          const { PptxViewer, RECOMMENDED_ZIP_LIMITS } = await import("@aiden0z/pptx-renderer");
+          if (!alive) return;
+          const v = await PptxViewer.open(buf, el, {
+            zipLimits: RECOMMENDED_ZIP_LIMITS,
+            fitMode: "contain",
+            externalMedia: "block", // 파일 안 외부 주소로 요청을 보내지 않음 (브라우저 밖으로 나가는 것 없음)
+            scrollContainer: el,
+            listOptions: { windowed: true },
+            signal: ctrl.signal,
+          });
+          if (!alive) v.destroy();
+          else viewer = v;
+        }
+        if (alive) setReady(true);
+      } catch {
+        if (alive) onFail();
+      }
+    })();
+    return () => {
+      alive = false;
+      ctrl.abort();
+      ro?.disconnect();
+      viewer?.destroy();
+      el.replaceChildren();
+    };
+  }, [file, ext, onFail]);
+
+  return (
+    <>
+      {!ready && <p className="viewer-empty">파일을 그리는 중...</p>}
+      {/* 다 그릴 때까지 투명하게만 숨김 (display:none이면 쪽 폭을 잴 수 없음) */}
+      <div ref={ref} className={`office-preview office-${ext} ${ready ? "" : "is-drawing"}`} />
+    </>
+  );
+}
+
+export default function FilePreview({ file, onClose }: { file: File; onClose: () => void }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   // 열리면 닫기 버튼에 포커스, Esc로 닫기, 뒤 화면 스크롤 막기
   useEffect(() => {
@@ -102,17 +221,6 @@ export default function FilePreview({ file, onClose }: { file: File; onClose: ()
       prevFocus?.focus();
     };
   }, [onClose]);
-
-  function downloadOriginal() {
-    const url = URL.createObjectURL(file);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
 
   return (
     <div className="viewer-backdrop" onClick={onClose}>
@@ -137,32 +245,10 @@ export default function FilePreview({ file, onClose }: { file: File; onClose: ()
           </button>
         </div>
 
-        <div className="viewer-body">
-          {view.kind === "loading" && <p className="viewer-empty">파일을 여는 중...</p>}
-          {view.kind === "image" && <img className="viewer-image" src={view.url} alt={file.name} />}
-          {view.kind === "pdf" && <iframe className="viewer-pdf" src={view.url} title={file.name} />}
-          {view.kind === "text" && (
-            <>
-              <pre className="viewer-text">{view.text || "(내용이 비어 있어요)"}</pre>
-              {view.cut && <p className="viewer-note">앞부분 200KB만 보여주고 있어요</p>}
-            </>
-          )}
-          {view.kind === "none" && (
-            <div className="viewer-empty">
-              <p>
-                <strong>{ext ? `.${ext}` : "확장자 없는"} 파일은 브라우저에서 바로 볼 수 없어요.</strong>
-              </p>
-              <p>원본을 내려받아서 프로그램으로 열어 주세요.</p>
-            </div>
-          )}
-        </div>
+        <PreviewBody file={file} />
 
         <div className="viewer-foot">
-          <span className="viewer-note">원본 이름 그대로 내려받아요</span>
           <span className="spacer" />
-          <button type="button" className="btn" onClick={downloadOriginal}>
-            원본 내려받기
-          </button>
           <button type="button" className="btn primary" onClick={onClose}>
             닫기
           </button>

@@ -34,3 +34,37 @@ export function readDocMeta(name: string, bytes: Uint8Array): DocMeta {
     revision: Number.isInteger(rev) && rev > 0 ? rev : undefined,
   };
 }
+
+// 미리보기용으로 docx·pptx 안의 글자만 꺼낸다 (서식·그림은 버림). 다른 형식이나 못 읽으면 null
+// pptx는 슬라이드 순서대로 "[슬라이드 n]" 머리글을 붙인다
+// shortcut: 표·머리글·메모 등은 빠짐. 미리보기 이상으로 쓰게 되면(D-23 내용 비교) 제대로 된 파서로 바꾼다
+export function readDocText(name: string, bytes: Uint8Array): string | null {
+  const ext = name.slice(name.lastIndexOf(".") + 1).toLowerCase();
+  const isDocx = ext === "docx";
+  if (!isDocx && ext !== "pptx") return null;
+  let files: Record<string, Uint8Array>;
+  try {
+    files = unzipSync(bytes, {
+      filter: (f) => (isDocx ? f.name === "word/document.xml" : /^ppt\/slides\/slide\d+\.xml$/.test(f.name)),
+    });
+  } catch {
+    return null;
+  }
+  const textOf = (xml: string, p: string, t: string) =>
+    xml
+      .split(`</${p}>`)
+      .map((para) => [...para.matchAll(new RegExp(`<${t}(?: [^>]*)?>([^<]*)</${t}>`, "g"))].map((m) => m[1]).join(""))
+      .filter((line) => line.trim())
+      .map(unescapeXml)
+      .join("\n");
+  if (isDocx) {
+    const doc = files["word/document.xml"];
+    return doc ? textOf(strFromU8(doc), "w:p", "w:t") : null;
+  }
+  const slides = Object.keys(files).sort((a, b) => Number(a.match(/\d+/)![0]) - Number(b.match(/\d+/)![0]));
+  if (!slides.length) return null;
+  return slides.map((k, i) => `[슬라이드 ${i + 1}]\n${textOf(strFromU8(files[k]), "a:p", "a:t")}`).join("\n\n");
+}
+
+const unescapeXml = (s: string) =>
+  s.replace(/&(lt|gt|quot|apos|amp);/g, (_, e: string) => ({ lt: "<", gt: ">", quot: '"', apos: "'", amp: "&" })[e]!);

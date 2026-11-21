@@ -125,18 +125,14 @@ input {
 }
 
 /* ---------- S-01 헤더 ---------- */
-/* 로고 | 단계 표시(가운데) | 안내 */
+/* 로고 왼쪽 | 단계 표시 오른쪽 (좁은 화면은 안내도 헤더에) */
 .header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px 24px;
   flex-wrap: wrap;
   padding: 0 2px 4px;
-}
-.trust {
-  justify-self: end;
 }
 .brand-title {
   display: inline-flex;
@@ -172,52 +168,56 @@ input {
   color: var(--green);
 }
 
-/* ---------- 단계 표시: 헤더 가운데 한 줄 알약 ---------- */
+/* ---------- 단계 표시: 번호 + 이름, 사이에 가는 선. 지금 단계만 파랑 ---------- */
 .stepper {
   display: flex;
   align-items: center;
-  gap: 6px;
 }
 .stepper-item {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  height: 36px;
-  padding: 0 14px 0 5px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
+  padding: 6px 6px;
+  border: none;
+  border-radius: 8px;
+  background: none;
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 0.15s, background 0.15s;
+}
+/* 단계 사이 연결선 */
+.stepper-item + .stepper-item::before {
+  content: "";
+  width: 28px;
+  height: 1.5px;
+  margin-right: 6px;
+  border-radius: 1px;
+  background: var(--border-strong);
+}
+.stepper-item.done + .stepper-item::before {
+  background: var(--green);
 }
 .stepper-item:disabled {
   cursor: default;
 }
-.stepper-item:not(:disabled):not(.current):hover {
-  border-color: var(--border-strong);
-}
-.stepper-item.current {
-  border-color: var(--brand);
-  background: var(--brand);
+.stepper-item:not(:disabled):not(.current):hover .stepper-label {
+  color: var(--ink);
 }
 .stepper-num {
   flex: none;
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .stepper-item.current .stepper-num {
-  background: #fff;
-  color: var(--brand);
+  background: var(--brand);
+  color: #fff;
 }
 .stepper-item.done .stepper-num {
   background: var(--green);
@@ -225,15 +225,15 @@ input {
 }
 .stepper-label {
   font-size: 14px;
-  font-weight: 700;
-  color: var(--ink);
+  font-weight: 600;
+  color: var(--text-2);
 }
 .stepper-item.todo .stepper-label {
-  color: var(--muted);
-  font-weight: 600;
+  color: var(--faint);
 }
 .stepper-item.current .stepper-label {
-  color: #fff;
+  color: var(--brand);
+  font-weight: 700;
 }
 
 /* ---------- 단계 영역 공통 ---------- */
@@ -318,6 +318,7 @@ input {
   flex-wrap: wrap;
 }
 .btn {
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -600,7 +601,7 @@ td.nowrap {
 .file-row + .file-row {
   border-top: 1px solid var(--surface-3);
 }
-label.file-row:hover {
+.file-row:hover {
   background: var(--surface-2);
 }
 .file-row input {
@@ -609,9 +610,6 @@ label.file-row:hover {
   height: 16px;
   margin: 0;
   accent-color: var(--brand);
-}
-.file-row.is-dup {
-  cursor: default;
 }
 .file-row.is-dup .file-name {
   color: var(--muted);
@@ -704,27 +702,6 @@ label.file-row:hover {
 }
 .reason.chosen::before {
   background: var(--blue);
-}
-.open-btn {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--surface);
-  color: var(--text-2);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-.open-btn:hover {
-  border-color: var(--brand);
-  background: var(--brand);
-  color: #fff;
 }
 
 /* ---------- S-04 이름 변경 ---------- */
@@ -1009,7 +986,7 @@ label.file-row:hover {
   }
 }
 
-/* 헤더가 좁으면 단계 표시를 둘째 줄로 내려 폭을 꽉 채움 */
+/* 헤더가 좁으면(안내가 헤더에 있음) 단계 표시를 둘째 줄로 */
 @media (max-width: 1100px) {
   .header {
     display: flex;
@@ -1017,9 +994,6 @@ label.file-row:hover {
   .header .stepper {
     order: 3;
     width: 100%;
-  }
-  .stepper-item {
-    flex: 1;
   }
 }
 
@@ -1070,7 +1044,11 @@ label.file-row:hover {
     font-size: 12px;
   }
   .stepper-label {
-    font-size: 13px;
+    font-size: 12.5px;
+  }
+  .stepper-item + .stepper-item::before {
+    width: 12px;
+    margin-right: 4px;
   }
   .stats {
     width: 100%;
@@ -1254,21 +1232,6 @@ main {
   }
 }
 
-/* 그룹 카드 "… N개 더" (4개 이상일 때 위 2개만 보이고 누르면 펼침) */
-.more-btn {
-  display: block;
-  margin: 4px 0 0;
-  padding: 6px 0;
-  border: none;
-  background: none;
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.more-btn:hover {
-  text-decoration: underline;
-}
 
 /* 서비스 이름의 "fit"만 파랑 (로고 마크의 파란 종이와 같은 색) */
 .wordmark-fit {
@@ -1326,7 +1289,6 @@ main {
 /* 누름·바뀜 */
 .btn,
 .stepper-item,
-.open-btn,
 .remove,
 .sample-btn {
   /* 비활성 ↔ 활성(opacity)도 천천히 */
@@ -1335,7 +1297,6 @@ main {
 }
 .btn:active:not(:disabled),
 .stepper-item:active:not(:disabled),
-.open-btn:active,
 .remove:active {
   transform: scale(0.96);
 }
@@ -1476,9 +1437,16 @@ main {
 .bottom-bar .actions {
   margin: 0;
   min-height: 52px;
+  animation: rise-in 0.4s var(--ease-out) backwards;
 }
 .bottom-bar .hint {
   margin: 0;
+}
+/* 하단바 버튼은 주 버튼과 같은 높이 */
+.bottom-bar .btn:not(.primary) {
+  height: 52px;
+  padding: 0 22px;
+  font-size: 15px;
 }
 @media (max-width: 480px) {
   .bottom-bar {
@@ -1525,4 +1493,293 @@ main {
 .stepper[inert] {
   opacity: 0.5;
   filter: saturate(0.4);
+}
+
+/* "파일은 서버로 올라가지 않고…" 안내: PC는 하단바 왼쪽, 1100px 이하는 헤더 */
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.bottom-bar .actions {
+  flex: 1;
+  min-width: 0;
+}
+.trust-top {
+  display: none;
+}
+.trust-bar {
+  flex: none;
+}
+@media (max-width: 1100px) {
+  .trust-top {
+    display: inline-flex;
+  }
+  .trust-bar {
+    display: none;
+  }
+}
+
+/* STEP 2: 왼쪽 그룹별 파일 목록, 오른쪽 누른 파일의 정보·미리보기 */
+.result-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 18px;
+}
+.result-grid .cards {
+  grid-template-columns: 1fr;
+  margin-top: 0;
+}
+.file-row.is-focused,
+.file-row.is-focused:hover {
+  background: var(--accent-bg);
+}
+.file-row.is-focused .file-name {
+  color: var(--brand);
+}
+.file-detail {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.detail-inner {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 20px;
+  animation: rise-in 0.35s var(--ease-out) backwards;
+}
+.detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.detail-title {
+  min-width: 0;
+  font-size: 16px;
+  word-break: break-all;
+}
+/* 제목 줄 오른쪽 끝: 크기 · 수정 날짜 */
+.detail-meta {
+  flex: none;
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.detail-preview {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+}
+.detail-preview .viewer-body {
+  min-height: 0;
+  background: var(--surface);
+}
+.detail-preview .viewer-pdf {
+  height: 100%;
+}
+/* 폰·태블릿: 오른쪽 칸 없이 목록만. 행을 누르면 팝업으로 열림 */
+@media (max-width: 860px) {
+  .result-grid {
+    display: block;
+  }
+  .file-detail {
+    display: none;
+  }
+}
+/* docx·pptx에서 꺼낸 글자는 본문 글꼴로 */
+.viewer-doc {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+/* docx·pptx를 라이브러리로 그린 미리보기. 칸 안에서 스크롤 */
+.office-preview {
+  height: 100%;
+  overflow: auto;
+}
+.viewer .office-preview {
+  height: 70vh;
+}
+.office-docx .docx-wrapper {
+  padding: 16px;
+  background: var(--surface-2);
+}
+.office-docx .docx-wrapper > section.docx {
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+
+/* STEP 2 왼쪽: 그룹 칩(좌우로 밀기) + 고른 그룹의 카드 */
+.result-list {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chips {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  padding: 2px 2px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  cursor: grab;
+  user-select: none;
+  --fade-l: 0px;
+  --fade-r: 0px;
+  /* 넘치는 쪽 가장자리를 흐리게 */
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%);
+}
+.chips::-webkit-scrollbar {
+  display: none;
+}
+.chips.fade-left {
+  --fade-l: 36px;
+}
+.chips.fade-right {
+  --fade-r: 36px;
+}
+.chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.25s, border-color 0.25s, color 0.25s, transform 0.15s var(--ease-out);
+}
+.chip:hover {
+  border-color: var(--faint);
+  color: var(--ink);
+}
+.chip:active {
+  transform: scale(0.96);
+}
+.chip.is-active {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+.chip-ext {
+  font-weight: 500;
+  opacity: 0.7;
+}
+.chip-count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 12px;
+  text-align: center;
+}
+.chip.is-active .chip-count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+/* 아직 최신 파일을 골라야 하는 그룹 */
+.chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e0a100;
+}
+.result-list .scroll-area {
+  flex: 1;
+}
+.office-pptx {
+  background: var(--surface-2);
+}
+/* 미리보기도 스크롤 막대는 숨김 (옆으로는 넘치지 않게) */
+.office-preview {
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.office-preview::-webkit-scrollbar {
+  display: none;
+}
+
+/* 최신 파일 고르기: 라디오(그룹에서 하나만)는 그대로 두고 모양만 둥근 체크로. 고르면 파랑으로 차고 체크가 톡 튀어나옴 */
+.file-row input[type="radio"] {
+  appearance: none;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface) no-repeat center / 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  cursor: pointer;
+  transition: background-color 0.25s, border-color 0.25s, background-size 0.3s var(--ease-out);
+}
+.file-row input[type="radio"]:hover:not(:disabled) {
+  border-color: var(--brand);
+}
+.file-row input[type="radio"]:checked {
+  border-color: var(--brand);
+  background-color: var(--brand);
+  background-size: 15px;
+  animation: check-pop 0.35s var(--ease-out);
+}
+.file-row input[type="radio"]:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.file-row input[type="radio"]:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+@keyframes check-pop {
+  0% {
+    transform: scale(0.8);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 그리는 중에는 자리만 잡고 안 보이게 */
+.office-preview.is-drawing {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+.viewer-body:has(.is-drawing) {
+  position: relative;
+}
+/* 쪽 크기 정보가 없는 docx도 A4 쪽처럼 보이게 (폭 21cm, 여백 2.54cm) */
+.office-docx section.docx:not([style*="width"]) {
+  width: 794px;
+  min-height: 1123px;
+  padding: 96px;
 }

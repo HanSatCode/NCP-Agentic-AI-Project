@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DragEvent, KeyboardEvent } from "react";
-import FilePreview from "./FilePreview";
+import FilePreview, { PreviewBody } from "./FilePreview";
 import Logo from "./Logo";
 // 분석 로직은 src/analysis (화면 코드 없음, /check-result와 같은 함수). 규칙은 rules/version-rules.json
 import rules from "@/rules/version-rules.json";
@@ -56,6 +56,87 @@ function saveBlob(blob: Blob, name: string) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** 파일이 브라우저 밖으로 나가지 않는다는 안내. PC는 하단바 왼쪽, 좁은 화면은 헤더에 (globals.css) */
+function TrustNote({ className }: { className: string }) {
+  return (
+    <p className={`trust ${className}`}>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <rect x="4" y="11" width="16" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+      </svg>
+      파일은 서버로 올라가지 않고 내 브라우저 안에서만 처리돼요
+    </p>
+  );
+}
+
+const SINGLES = "__singles"; // 분석 화면 칩: 단독 파일
+
+/** 좌우로 밀어서 넘기는 칩 줄. 스크롤 막대는 숨기고, 넘치는 쪽 가장자리를 흐리게.
+ *  마우스: 끌기·휠로 좌우 이동, 터치: 손가락으로 밀기 */
+function ChipScroller({ label, active, children }: { label: string; active: string | null; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; left: number; moved: boolean } | null>(null);
+  const [edge, setEdge] = useState({ left: false, right: false });
+  useEffect(() => {
+    const el = ref.current!;
+    const update = () =>
+      setEdge({ left: el.scrollLeft > 2, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 });
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+  // 고른 칩이 바뀌었는데 가려져 있으면 보이게 옆으로 밀어 줌 (손으로 밀 때는 건드리지 않음)
+  useEffect(() => {
+    ref.current?.querySelector(".is-active")?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+  }, [active]);
+  return (
+    <div
+      ref={ref}
+      className={`chips ${edge.left ? "fade-left" : ""} ${edge.right ? "fade-right" : ""}`}
+      role="group"
+      aria-label={label}
+      onWheel={(e) => {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) ref.current!.scrollLeft += e.deltaY;
+      }}
+      onPointerDown={(e) => {
+        if (e.pointerType === "mouse") drag.current = { x: e.clientX, left: ref.current!.scrollLeft, moved: false };
+      }}
+      onPointerMove={(e) => {
+        const d = drag.current;
+        if (!d) return;
+        if (Math.abs(e.clientX - d.x) > 4) d.moved = true;
+        if (d.moved) ref.current!.scrollLeft = d.left - (e.clientX - d.x);
+      }}
+      onPointerUp={() => setTimeout(() => (drag.current = null))}
+      onPointerLeave={() => (drag.current = null)}
+      onClickCapture={(e) => {
+        // 끌어서 넘긴 거면 칩이 눌리지 않게
+        if (drag.current?.moved) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** 다음 단계로 가는 버튼의 → (마우스를 올리면 앞으로 살짝) */
+function ArrowIcon() {
+  return (
+    <svg className="btn-arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5 12h14" />
+      <path d="M13 6l6 6-6 6" />
+    </svg>
+  );
 }
 
 /** 목록이 차례로 나타나게 하는 순번 (globals.css의 --i) */
@@ -115,7 +196,8 @@ function Scrollable({ className, grow, children }: { className: string; grow?: b
   useEffect(() => {
     const el = ref.current!;
     const update = () => {
-      setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+      // 16px 미만은 무시: 행이 떠오르는 애니메이션(10px) 동안 잠깐 넘쳐 보여서 표시가 깜빡이지 않게
+      setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 16);
       if (el.scrollTop > 0) setScrolled(true);
     };
     update();
@@ -148,28 +230,6 @@ function Scrollable({ className, grow, children }: { className: string; grow?: b
   );
 }
 
-/** 파일 행의 [열기] 버튼. 행 전체가 라디오 label이라 눌러도 최신 파일 선택이 바뀌지 않게 막는다 */
-function OpenButton({ name, onOpen }: { name: string; onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      className="open-btn"
-      aria-label={`${name} 열기`}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onOpen();
-      }}
-    >
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-        <circle cx="12" cy="12" r="3" />
-      </svg>
-      열기
-    </button>
-  );
-}
-
 export default function FileVersionApp() {
   const [items, setItems] = useState<Item[]>([]);
   const itemsRef = useRef<Item[]>([]);
@@ -184,8 +244,10 @@ export default function FileVersionApp() {
   const busy = overlay !== null;
   // 그룹 key → 사용자가 직접 고른 최신 파일 id (F-02-05)
   const [selected, setSelected] = useState<Record<string, string | undefined>>({});
-  // 파일이 4개 이상인 그룹 카드를 펼쳤는지
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // 분석 화면 오른쪽에 정보를 보여 줄 파일 (행을 누르면 바뀜. 최신 파일 선택과는 따로)
+  const [focusId, setFocusId] = useState<string | null>(null);
+  // 분석 화면 왼쪽에 보여 줄 그룹 (위쪽 칩으로 고름). SINGLES = 단독 파일
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
 
   const [showRename, setShowRename] = useState(false);
   const [bases, setBases] = useState<Record<string, string | undefined>>({});
@@ -250,7 +312,8 @@ export default function FileVersionApp() {
       rules as Rules,
     );
     setSelected({}); // D-12: 다시 계산하면 직접 선택은 초기화
-    setExpanded({});
+    setActiveGroup(null);
+    setFocusId(null);
     setAnalysis(result);
     setAnalyzing(false);
     if (goNext) {
@@ -269,7 +332,7 @@ export default function FileVersionApp() {
     setAnalysis(null);
     setAnalyzing(false);
     setSelected({});
-    setExpanded({});
+    setFocusId(null);
     setShowRename(false);
     setBases({});
     setDrafts({});
@@ -390,6 +453,52 @@ export default function FileVersionApp() {
 
   const nameById = new Map(items.map((x) => [x.input.id, x.file.name]));
 
+  // 왼쪽에 보여 줄 그룹: 고른 칩, 없으면 첫 그룹 (그룹이 없으면 단독 파일)
+  const activeKey =
+    analysis && (analysis.groups.some((g) => g.key === activeGroup) || (activeGroup === SINGLES && analysis.singles.length))
+      ? activeGroup
+      : (analysis?.groups[0]?.key ?? (analysis?.singles.length ? SINGLES : null));
+
+  // 칩을 누르면 그 그룹을 보여 주고, 오른쪽도 그 그룹의 최신 후보(단독이면 첫 파일)로
+  function openGroup(key: string) {
+    setActiveGroup(key);
+    const g = analysis?.groups.find((x) => x.key === key);
+    setFocusId(g ? (g.latestId ?? g.files[0].id) : (analysis?.singles[0]?.id ?? null));
+  }
+
+  // 오른쪽에 보여 줄 파일: 누른 파일, 없으면 첫 그룹의 최신 후보
+  const resultFiles = analysis ? [...analysis.groups.flatMap((g) => g.files), ...analysis.singles] : [];
+  const focusResult =
+    resultFiles.find((f) => f.id === focusId) ??
+    resultFiles.find((f) => f.id === analysis?.groups[0]?.latestId) ??
+    resultFiles[0];
+  const focusItem = items.find((x) => x.input.id === focusResult?.id);
+
+  // 파일 행: 누르면 오른쪽에 그 파일을 보여 줌. 폰·태블릿은 오른쪽 칸이 없어서 팝업으로 연다
+  // hasRadio: 라디오가 있으면 키보드는 라디오로 오가고(onFocus), 없으면 행 자체가 버튼
+  function rowProps(id: string, hasRadio: boolean) {
+    const show = (fromRadio: boolean) => {
+      setFocusId(id);
+      if (!fromRadio && window.matchMedia("(max-width: 860px)").matches) setPreviewId(id);
+    };
+    return {
+      onClick: (e: React.MouseEvent) => show((e.target as HTMLElement).tagName === "INPUT"),
+      ...(hasRadio
+        ? {}
+        : {
+            role: "button",
+            tabIndex: 0,
+            "aria-label": `${nameById.get(id) ?? "파일"} 정보 보기`,
+            onKeyDown: (e: KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                show(false);
+              }
+            },
+          }),
+    };
+  }
+
   function badgesFor(g: Group, f: FileResult): Badge[] {
     if (f.duplicateOf) return ["중복"];
     const list: Badge[] = [];
@@ -407,9 +516,10 @@ export default function FileVersionApp() {
   function goRename() {
     if (!analysis) return;
     // D-08: "확인 필요" 그룹을 모두 고를 때까지 STEP 3으로 못 감
-    const unresolved = analysis.groups.filter((g) => g.status === "확인 필요" && !selected[g.key]).length;
-    if (unresolved > 0) {
-      toast(MSG.M05(unresolved), "warn");
+    const unresolved = analysis.groups.filter((g) => g.status === "확인 필요" && !selected[g.key]);
+    if (unresolved.length > 0) {
+      toast(MSG.M05(unresolved.length), "warn");
+      openGroup(unresolved[0].key); // 칩으로 나뉘어 안 보일 수 있으니 고를 그룹을 바로 보여 줌
       return;
     }
     setShowRename(true);
@@ -448,8 +558,8 @@ export default function FileVersionApp() {
 
   // 한 번 가 본 단계만 눌러서 이동할 수 있다
   const steps: { n: 1 | 2 | 3; label: string; visible: boolean }[] = [
-    { n: 1, label: "업로드", visible: true },
-    { n: 2, label: "분석", visible: !!analysis && !analyzing },
+    { n: 1, label: "파일 업로드", visible: true },
+    { n: 2, label: "파일 분석", visible: !!analysis && !analyzing },
     { n: 3, label: "이름 변경", visible: !!analysis && !analyzing && showRename },
   ];
 
@@ -483,13 +593,7 @@ export default function FileVersionApp() {
             );
           })}
         </nav>
-        <p className="trust">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <rect x="4" y="11" width="16" height="10" rx="2" />
-            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-          </svg>
-          파일은 서버로 올라가지 않고 내 브라우저 안에서만 처리돼요
-        </p>
+        <TrustNote className="trust-top" />
       </header>
 
       {/* S-02 STEP 1 파일 업로드 */}
@@ -652,13 +756,45 @@ export default function FileVersionApp() {
             }
           />
 
-          <Scrollable className="panel-body" grow>
-          <div className="cards">
-            {analysis.groups.map((g, gi) => {
-              // 4개 이상이면 위 2개 + "… N개 더" (누르면 펼침)
-              const collapsed = g.files.length >= 4 && !expanded[g.key];
-              const shown = collapsed ? g.files.slice(0, 2) : g.files;
+          {/* 왼쪽: 그룹별 파일 목록 (모두 펼침, D-32). 오른쪽: 누른 파일의 정보와 미리보기 */}
+          <div className="result-grid">
+          <div className="result-list">
+          <ChipScroller label="그룹 고르기" active={activeKey}>
+            {analysis.groups.map((g) => {
+              const needs = g.status === "확인 필요" && !selected[g.key];
               return (
+                <button
+                  key={g.key}
+                  type="button"
+                  className={`chip ${g.key === activeKey ? "is-active" : ""}`}
+                  aria-pressed={g.key === activeKey}
+                  onClick={() => openGroup(g.key)}
+                >
+                  {needs && <span className="chip-dot" title="확인 필요" aria-label="확인 필요" />}
+                  <span>
+                    {g.baseName}
+                    {g.ext && <span className="chip-ext">.{g.ext}</span>}
+                  </span>
+                  <span className="chip-count">{g.files.length}</span>
+                </button>
+              );
+            })}
+            {analysis.singles.length > 0 && (
+              <button
+                type="button"
+                className={`chip ${activeKey === SINGLES ? "is-active" : ""}`}
+                aria-pressed={activeKey === SINGLES}
+                onClick={() => openGroup(SINGLES)}
+              >
+                단독 파일
+                <span className="chip-count">{analysis.singles.length}</span>
+              </button>
+            )}
+          </ChipScroller>
+          <Scrollable className="panel-body" grow>
+          {/* key: 칩을 바꾸면 카드를 새로 그려서 나타나는 애니메이션이 돎 */}
+          <div className="cards" key={activeKey ?? ""}>
+            {analysis.groups.filter((g) => g.key === activeKey).map((g, gi) => (
               <div className="card" key={g.key} style={stagger(gi)}>
                 <div className="card-head">
                   <FileTypeIcon name={g.files[0].name} />
@@ -670,16 +806,22 @@ export default function FileVersionApp() {
                 </div>
                 <fieldset>
                   <legend className="sr-only">{g.baseName} 그룹의 최신 파일 고르기</legend>
-                  {shown.map((f) => {
+                  {g.files.map((f) => {
                     const checked = !f.duplicateOf && (selected[g.key] ?? g.latestId) === f.id;
                     return (
-                      <label className={`file-row ${f.duplicateOf ? "is-dup" : ""}`} key={f.id}>
+                      <div
+                        className={`file-row ${f.duplicateOf ? "is-dup" : ""} ${f.id === focusResult?.id ? "is-focused" : ""}`}
+                        key={f.id}
+                        {...rowProps(f.id, !f.duplicateOf)}
+                      >
                         <input
                           type="radio"
                           name={`latest-${g.key}`}
+                          aria-label={`${f.name}을 최신 파일로 고르기`}
                           checked={checked}
                           disabled={!!f.duplicateOf}
                           onChange={() => choose(g, f.id)}
+                          onFocus={() => setFocusId(f.id)}
                         />
                         <span className="file-main">
                           <span className="file-name">{f.name}</span>
@@ -693,20 +835,10 @@ export default function FileVersionApp() {
                             <BadgeLabel key={b} badge={b} />
                           ))}
                         </span>
-                        <OpenButton name={f.name} onOpen={() => setPreviewId(f.id)} />
-                      </label>
+                      </div>
                     );
                   })}
                 </fieldset>
-                {collapsed && (
-                  <button
-                    type="button"
-                    className="more-btn"
-                    onClick={() => setExpanded((e) => ({ ...e, [g.key]: true }))}
-                  >
-                    … {g.files.length - 2}개 더
-                  </button>
-                )}
                 {g.reason && <p className="reason">추천 이유: {g.reason}</p>}
                 {selected[g.key] && (
                   <p className="reason chosen">
@@ -714,18 +846,21 @@ export default function FileVersionApp() {
                   </p>
                 )}
               </div>
-              );
-            })}
+            ))}
 
-            {analysis.singles.length > 0 && (
-              <div className="card singles" style={stagger(analysis.groups.length)}>
+            {activeKey === SINGLES && (
+              <div className="card singles">
                 <div className="card-head">
                   <h3>단독 파일</h3>
                   <span className="card-count">{analysis.singles.length}개</span>
                 </div>
                 <p className="hint small">비슷한 이름의 파일이 없어서 그룹으로 묶지 않았어요</p>
                 {analysis.singles.map((f) => (
-                  <div className={`file-row ${f.duplicateOf ? "is-dup" : ""}`} key={f.id}>
+                  <div
+                    className={`file-row ${f.duplicateOf ? "is-dup" : ""} ${f.id === focusResult?.id ? "is-focused" : ""}`}
+                    key={f.id}
+                    {...rowProps(f.id, false)}
+                  >
                     <FileTypeIcon name={f.name} />
                     <span className="file-main">
                       <span className="file-name">{f.name}</span>
@@ -735,13 +870,31 @@ export default function FileVersionApp() {
                       )}
                     </span>
                     <span className="badges">{f.duplicateOf && <BadgeLabel badge="중복" />}</span>
-                    <OpenButton name={f.name} onOpen={() => setPreviewId(f.id)} />
                   </div>
                 ))}
               </div>
             )}
           </div>
           </Scrollable>
+          </div>
+
+          <aside className="file-detail" aria-label="파일 정보">
+            {focusResult && focusItem && (
+              <div className="detail-inner" key={focusResult.id}>
+                <div className="detail-head">
+                  <FileTypeIcon name={focusResult.name} />
+                  <h3 className="detail-title">{focusResult.name}</h3>
+                  <span className="detail-meta">
+                    {formatSize(focusResult.size)} · {formatDate(focusResult.lastModified)}
+                  </span>
+                </div>
+                <div className="detail-preview">
+                  <PreviewBody file={focusItem.file} />
+                </div>
+              </div>
+            )}
+          </aside>
+          </div>
 
         </section>
       )}
@@ -752,7 +905,7 @@ export default function FileVersionApp() {
           <SectionHead
             id="s04-title"
             title="이름 변경·내려받기"
-            desc="새 이름 규칙은 기본이름_v번호_수정날짜예요. 그룹의 기본 이름은 직접 고칠 수 있어요."
+            desc="새 이름 규칙은 기본이름_v번호(01, 02…)_수정날짜예요. 그룹의 기본 이름은 직접 고칠 수 있어요."
           />
 
           <Scrollable className="panel-body" grow>
@@ -822,16 +975,13 @@ export default function FileVersionApp() {
 
       {/* 하단바: 단계마다 버튼을 화면 아래에 고정 */}
       <div className="bottom-bar" ref={barRef}>
-        <div className="actions">
+        <TrustNote className="trust-bar" />
+        {/* key: 단계가 바뀌면 버튼 묶음을 새로 그려서 나타나는 애니메이션이 돎 (앞으로·뒤로 모두) */}
+        <div className="actions" key={view}>
           {view === 1 && (
             <>
               {items.length === 1 && <p className="hint warn">{MSG.M02}</p>}
               <span className="spacer" />
-              {analysis && !analyzing && !busy && (
-                <button type="button" className="btn" onClick={() => setView(2)}>
-                  분석 결과 보기 →
-                </button>
-              )}
               <button
                 type="button"
                 className={`btn primary ${overlay === "done" ? "is-done" : ""}`}
@@ -851,10 +1001,7 @@ export default function FileVersionApp() {
                 ) : (
                   <>
                     분석하기
-                    <svg className="btn-arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <path d="M5 12h14" />
-                      <path d="M13 6l6 6-6 6" />
-                    </svg>
+                    <ArrowIcon />
                   </>
                 )}
               </button>
@@ -862,12 +1009,13 @@ export default function FileVersionApp() {
           )}
           {view === 2 && analysis && (
             <>
-              <button type="button" className="btn" onClick={() => setView(1)}>
-                ← 이전: 파일 업로드
-              </button>
               <span className="spacer" />
+              <button type="button" className="btn" onClick={() => setView(1)}>
+                이전
+              </button>
               <button type="button" className="btn primary" onClick={goRename} disabled={analyzing}>
-                다음: 이름 바꾸기
+                이름 바꾸기
+                <ArrowIcon />
               </button>
             </>
           )}
@@ -885,11 +1033,11 @@ export default function FileVersionApp() {
                 </label>
               </fieldset>
               <span className="spacer" />
-              <button type="button" className="btn" onClick={() => setView(2)}>
-                ← 이전: 분석 결과
-              </button>
               <button type="button" className="btn" onClick={restart}>
                 처음부터 다시
+              </button>
+              <button type="button" className="btn" onClick={() => setView(2)}>
+                이전
               </button>
               <button type="button" className="btn primary" disabled={included.length === 0} onClick={download}>
                 내려받기 ({included.length}개)
