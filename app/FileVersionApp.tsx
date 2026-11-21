@@ -380,7 +380,7 @@ export default function FileVersionApp() {
         <h1 className="brand-title" aria-label="Filefit 파일핏">
           <Logo size={34} />
           <span className="wordmark" aria-hidden>
-            Filefit
+            File<span className="wordmark-fit">fit</span>
           </span>
         </h1>
         <p className="trust">

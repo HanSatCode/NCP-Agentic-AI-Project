@@ -1185,3 +1185,8 @@ main {
 .more-btn:hover {
   text-decoration: underline;
 }
+
+/* 서비스 이름의 "fit"만 파랑 (로고 마크의 파란 종이와 같은 색) */
+.wordmark-fit {
+  color: var(--accent);
+}
