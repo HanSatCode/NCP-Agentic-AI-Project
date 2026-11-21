@@ -45,15 +45,16 @@ main:has(> .intro) {
   align-items: center;
   padding-block: 56px 80px;
 }
+/* 왼쪽 글은 넓은 화면일수록 커져서 오른쪽 예시와의 빈 곳을 채운다 (1280px ≈ 지금 크기, 1920px에서 최대) */
 .intro-eyebrow {
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   color: var(--brand);
-  font-size: 14px;
+  font-size: clamp(14px, 0.35vw + 10px, 17px);
   font-weight: 700;
 }
 .intro-title {
   margin: 0;
-  font-size: clamp(28px, 3.6vw, 42px);
+  font-size: clamp(28px, 3.3vw, 64px);
   line-height: 1.25;
   letter-spacing: -0.025em;
   font-weight: 800;
@@ -63,29 +64,31 @@ main:has(> .intro) {
   color: var(--brand);
 }
 .intro-lead {
-  margin: 20px 0 0;
-  max-width: 34em;
-  font-size: 17px;
+  margin: 22px 0 0;
+  max-width: 36em;
+  font-size: clamp(16px, 0.9vw + 5px, 22px);
   color: var(--text-2);
 }
 .intro-cta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 30px;
+  gap: 12px;
+  margin-top: 34px;
 }
 .intro-cta .btn {
-  height: 52px;
+  height: clamp(52px, 0.9vw + 40px, 58px);
+  font-size: clamp(15px, 0.3vw + 11px, 17px);
+  padding-inline: 26px;
 }
 .intro-cta .btn.primary {
-  min-width: 180px;
+  min-width: clamp(180px, 6vw + 104px, 220px);
 }
 .intro-trust {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 18px 0 0;
-  font-size: 13px;
+  margin: 20px 0 0;
+  font-size: clamp(13px, 0.3vw + 9px, 15px);
   color: var(--green);
 }
 
@@ -94,10 +97,12 @@ main:has(> .intro) {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) auto minmax(0, 1.1fr);
   align-items: center;
-  gap: 12px;
+  gap: 0.9em;
+  /* 예시 카드도 넓은 화면일수록 커진다 (1280px ≈ 13px, 1920px ≈ 16px). 안쪽 크기는 모두 em */
+  font-size: clamp(13px, 0.5vw + 6.6px, 16.5px);
 }
 .demo-card {
-  padding: 18px;
+  padding: 1.4em;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface-2);
@@ -107,8 +112,8 @@ main:has(> .intro) {
   box-shadow: var(--shadow);
 }
 .demo-label {
-  margin: 0 0 12px;
-  font-size: 12px;
+  margin: 0 0 0.9em;
+  font-size: 0.92em;
   font-weight: 700;
   color: var(--muted);
 }
@@ -121,22 +126,24 @@ main:has(> .intro) {
 .demo-before li {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 0;
-  font-size: 13px;
+  gap: 0.55em;
+  padding: 0.5em 0;
+  font-size: 1em;
   color: var(--text-2);
   overflow-wrap: anywhere;
 }
 .demo-before li svg {
   flex: none;
+  width: 1.15em;
+  height: 1.15em;
   color: var(--faint);
 }
 .demo-arrow {
-  font-size: 22px;
+  font-size: 1.7em;
   color: var(--brand);
 }
 .demo-after li {
-  padding: 10px 0;
+  padding: 0.8em 0;
   border-top: 1px solid var(--border);
 }
 .demo-after li:first-child {
@@ -146,28 +153,28 @@ main:has(> .intro) {
 .demo-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.6em;
   flex-wrap: wrap;
-  font-size: 14px;
+  font-size: 1.08em;
 }
 .demo-count {
-  font-size: 12px;
+  font-size: 0.85em;
   color: var(--muted);
 }
 .demo-badge {
   margin-left: auto;
-  padding: 2px 8px;
+  padding: 0.15em 0.7em;
   border-radius: 999px;
   background: var(--green-bg);
   color: var(--green);
-  font-size: 11px;
+  font-size: 0.78em;
   font-weight: 700;
 }
 .demo-from,
 .demo-to,
 .demo-note {
-  margin: 4px 0 0;
-  font-size: 12.5px;
+  margin: 0.3em 0 0;
+  font-size: 0.96em;
   overflow-wrap: anywhere;
 }
 .demo-from {
