@@ -640,3 +640,14 @@ main:has(> .intro) {
 .demo-after li.is-on {
   transform: translateX(-4px);
 }
+
+/* 소개 화면 전체: 글자 끌어 선택·링크/그림 끌기 막음 (읽고 누르는 화면) */
+.intro {
+  user-select: none;
+  -webkit-user-select: none;
+}
+.intro a,
+.intro svg,
+.intro img {
+  -webkit-user-drag: none;
+}
