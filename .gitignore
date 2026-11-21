@@ -2,3 +2,6 @@ node_modules/
 .next/
 next-env.d.ts
 *.tsbuildinfo
+
+# next dev가 자동으로 만드는 AI 도구 안내 파일. 이 프로젝트는 CLAUDE.md를 씀
+AGENTS.md
