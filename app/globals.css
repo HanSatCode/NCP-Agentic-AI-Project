@@ -109,6 +109,13 @@ main {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  animation: page-in 0.45s var(--ease-out); /* 소개 화면에서 넘어올 때 아래에서 살짝 올라옴 (StartLink) */
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
 }
 h1,
 h2,
@@ -3130,6 +3137,8 @@ p,
   .header .stepper {
     justify-content: center;
   }
+}
+
 /* 정리 도구(/start) 왼쪽 위 로고 → 첫 화면(소개)으로 가는 링크 (feat/intro) */
 .brand-link {
   display: inline-flex;

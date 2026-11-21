@@ -1,5 +1,5 @@
 "use client";
-// 서비스 이름 앞부분을 팀플 파일 이름처럼 썼다 지웠다 한다 (D-49). ".zip"은 고정
+// 글자를 팀플 파일 이름처럼 썼다 지웠다 한다 (D-49). 기본은 헤더의 서비스 이름 앞부분, ".zip"은 고정
 import { useEffect, useState } from "react";
 
 const NAMES = [
@@ -38,16 +38,16 @@ const HOLD = 2200; // 다 쓴 이름을 보여 주는 시간
 const TYPE = 130; // 한 글자 쓰는 시간
 const ERASE = 60; // 한 글자 지우는 시간
 
-export default function TypingName() {
-  const [text, setText] = useState(NAMES[0]);
+export default function TypingName({ names = NAMES, zip = true }: { names?: string[]; zip?: boolean }) {
+  const [text, setText] = useState(names[0]);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let i = 0;
-    let cur = NAMES[0];
+    let cur = names[0];
     let timer: ReturnType<typeof setTimeout>;
     const tick = () => {
-      const target = NAMES[(i + 1) % NAMES.length];
+      const target = names[(i + 1) % names.length];
       let delay = TYPE;
       // 다음 이름과 겹치는 앞부분까지만 지우고, 나머지를 한 글자씩 쓴다
       if (!target.startsWith(cur)) {
@@ -56,7 +56,7 @@ export default function TypingName() {
       } else if (cur !== target) {
         cur = target.slice(0, cur.length + 1);
       } else {
-        i = (i + 1) % NAMES.length;
+        i = (i + 1) % names.length;
         delay = HOLD;
       }
       setText(cur);
@@ -64,13 +64,13 @@ export default function TypingName() {
     };
     timer = setTimeout(tick, HOLD);
     return () => clearTimeout(timer);
-  }, []);
+  }, [names]);
 
   return (
     <>
       {text}
       <span className="wordmark-caret" />
-      <span className="wordmark-fit">.zip</span>
+      {zip && <span className="wordmark-fit">.zip</span>}
     </>
   );
 }

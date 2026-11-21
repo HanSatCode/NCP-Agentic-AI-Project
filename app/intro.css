@@ -29,21 +29,16 @@ main:has(> .intro) {
 .intro .btn {
   text-decoration: none;
 }
-.intro .intro-nav .intro-nav-cta.btn.primary {
-  flex: none;
-  min-width: 0;
-  height: 40px;
-  font-size: 14px;
-  padding: 0 18px;
-}
 
 /* ---------- 첫 화면 ---------- */
 .intro-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: 48px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(40px, 5vw, 96px);
   align-items: center;
-  padding-block: 56px 80px;
+  /* 첫 화면 높이를 다 씀 (위 메뉴 줄 80px 빼고) */
+  min-height: calc(100svh - 80px);
+  padding-block: 40px 72px;
 }
 /* 왼쪽 글은 넓은 화면일수록 커져서 오른쪽 예시와의 빈 곳을 채운다 (1280px ≈ 지금 크기, 1920px에서 최대) */
 .intro-eyebrow {
@@ -54,7 +49,7 @@ main:has(> .intro) {
 }
 .intro-title {
   margin: 0;
-  font-size: clamp(28px, 3.3vw, 64px);
+  font-size: clamp(30px, 3.7vw, 72px);
   line-height: 1.25;
   letter-spacing: -0.025em;
   font-weight: 800;
@@ -66,7 +61,7 @@ main:has(> .intro) {
 .intro-lead {
   margin: 22px 0 0;
   max-width: 36em;
-  font-size: clamp(16px, 0.9vw + 5px, 22px);
+  font-size: clamp(16px, 0.9vw + 6px, 23px);
   color: var(--text-2);
 }
 .intro-cta {
@@ -99,7 +94,7 @@ main:has(> .intro) {
   align-items: center;
   gap: 0.9em;
   /* 예시 카드도 넓은 화면일수록 커진다 (1280px ≈ 13px, 1920px ≈ 16px). 안쪽 크기는 모두 em */
-  font-size: clamp(13px, 0.5vw + 6.6px, 16.5px);
+  font-size: clamp(13px, 0.6vw + 7px, 18px);
 }
 .demo-card {
   padding: 1.4em;
@@ -398,4 +393,39 @@ main:has(> .intro) {
   .intro-cta .btn {
     flex: 1;
   }
+}
+
+/* ---------- 줄바꿈: 어구가 갈리지 않게 ---------- */
+.intro-nowrap {
+  white-space: nowrap;
+}
+.intro-br-phone {
+  display: none;
+}
+.intro-h2,
+.intro-final h2,
+.intro-step h3,
+.intro-clue h3 {
+  text-wrap: balance;
+}
+.intro-sub,
+.intro-final p,
+.intro-lead {
+  text-wrap: pretty;
+}
+@media (max-width: 640px) {
+  .intro-br-phone {
+    display: inline;
+  }
+}
+
+/* ---------- [시작하기]를 누르면: 소개 화면이 살짝 떠오르며 흐려지고 /start가 아래에서 올라옴 (StartLink) ---------- */
+.intro {
+  transition: opacity 0.32s var(--ease-out), transform 0.32s var(--ease-out), filter 0.32s var(--ease-out);
+}
+.intro.is-leaving {
+  opacity: 0;
+  transform: translateY(-14px) scale(0.985);
+  filter: blur(2px);
+  pointer-events: none;
 }
