@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import rules from "../../rules/version-rules.json" with { type: "json" };
-import { analyze } from "./analyze.ts";
+import { analyze, reasonDetail } from "./analyze.ts";
 import type { InputFile } from "./types.ts";
 
 // mtime은 "11-20" 같은 날짜, content가 같으면 중복
@@ -105,4 +105,13 @@ test("그룹 파일이 모두 다른 그룹의 중복이면 그룹을 만들지 
   assert.equal(r.groups.length, 0);
   assert.deepEqual(r.singles.map((f) => [f.name, !!f.duplicateOf]), [["A.pptx", false], ["B.pptx", false], ["발표자료_최종.pptx", true], ["발표자료_진짜최종.pptx", true]]);
   assert.equal(r.summary, "그룹 0개 · 단독 4개 · 중복 2개");
+});
+
+test("D-37 자세한 이유: 정한 단서를 적힌 그대로, 바로 앞 버전 이름, 중복은 앞 버전에서 뺌", () => {
+  const v = run([["보고서_v2.docx", "11-01"], ["보고서_v3.docx", "11-02"]]).groups[0];
+  assert.match(reasonDetail(v), /번호\(v3\)가 그룹에서 가장 커요/);
+  assert.match(reasonDetail(v), /바로 앞 버전은 '보고서_v2\.docx' 파일이에요/);
+  const only = run([["자료.docx", "11-01", "같음"], ["자료 - 복사본.docx", "11-01", "같음"]]).groups[0];
+  assert.doesNotMatch(reasonDetail(only), /바로 앞 버전/);
+  assert.match(reasonDetail(only), /중복이라 비교에서 뺐어요/);
 });

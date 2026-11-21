@@ -5,6 +5,9 @@ import type { RenameRow } from "./rename.ts";
 import { yyyymmdd } from "./rename.ts";
 
 export type Download = { filename: string; data: Uint8Array; count: number };
+
+// 2개 이상일 때 내려받는 zip 이름. STEP 3 오른쪽 "받을 파일"에도 같은 이름을 보여 줌
+export const zipName = (now = Date.now()) => `정리된파일_${yyyymmdd(now)}.zip`;
 type Source = { bytes: Uint8Array; lastModified: number };
 
 // rows: rename() 결과, sources: 파일 id → 원본 바이트와 수정 날짜, now: zip 이름에 넣을 오늘 날짜
@@ -26,5 +29,5 @@ export function makeDownload(rows: RenameRow[], sources: Map<string, Source>, no
     const s = src(r);
     entries[r.to!] = [s.bytes, { mtime: new Date(s.lastModified) }];
   }
-  return { filename: `정리된파일_${yyyymmdd(now)}.zip`, data: zipSync(entries, { level: 0 }), count: picked.length };
+  return { filename: zipName(now), data: zipSync(entries, { level: 0 }), count: picked.length };
 }

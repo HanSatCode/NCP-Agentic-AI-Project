@@ -105,3 +105,13 @@ test("D-33: 정리한 이름(v04)을 다시 올려도 같은 그룹·같은 버�
   assert.equal(r.version?.n, 4);
   assert.equal(p("발표자료_v10_20261120.pptx").version?.n, 10);
 });
+
+test("D-45 한글 날짜: 11월20일, 2026년 11월 20일을 날짜로 읽고 기본 이름에서 지움", () => {
+  const a = p("회의록_11월20일.hwp");
+  assert.equal(a.baseName, "회의록");
+  assert.deepEqual([a.date?.month, a.date?.day, a.date?.raw], [11, 20, "11월20일"]);
+  const b = p("보고서 2026년 1월 5일 최종.docx");
+  assert.equal(b.baseName, "보고서");
+  assert.deepEqual([b.date?.year, b.date?.month, b.date?.day], [2026, 1, 5]);
+  assert.equal(p("발표_13월40일.pptx").date, null); // 월·일로 읽히지 않으면 날짜 아님
+});

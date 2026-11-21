@@ -84,6 +84,27 @@ export function reasonText(by: Group["decidedBy"], top: FileResult): string {
   }
 }
 
+// 추천 이유 아래에 붙이는 자세한 설명 (D-37). 첫 줄 문구 틀(reason)은 그대로 두고, 무엇을 어떤 순서로 비교했는지 풀어 씀
+// 변수 뒤에 조사가 바로 붙지 않게 "번호/날짜/표현/파일"을 붙여 씀 (받침에 따라 이/가가 달라져서)
+export function reasonDetail(g: Group): string {
+  const [top, second] = g.files;
+  const next = second && !second.duplicateOf ? ` 바로 앞 버전은 '${second.name}' 파일이에요.` : "";
+  switch (g.decidedBy) {
+    case "version":
+      return `버전 번호를 가장 먼저 비교해요. 이 파일의 번호(${top.parsed.version!.raw})가 그룹에서 가장 커요.${next}`;
+    case "date":
+      return `버전 번호가 없거나 같아서 파일명에 적힌 날짜를 비교했어요. 이 파일의 날짜(${top.parsed.date!.raw})가 가장 늦어요.${next}`;
+    case "keyword":
+      return `번호나 날짜가 없어서 파일명에 붙은 말을 비교했어요. 진짜최종 > 최종수정 > 최종 > 수정 순서로 보는데, 이 파일의 '${top.parsed.keyword!.raw}'이 가장 앞이에요.${next}`;
+    case "mtime":
+      return "파일명으로는 순서를 알 수 없어서 수정 날짜로 정했어요. 카톡으로 받은 파일은 받은 시각이 수정 날짜가 되기도 하니, 파일을 눌러 내용을 한 번 확인해 주세요.";
+    case "tie":
+      return "버전 번호, 날짜, 파일명에 붙은 말, 수정 날짜가 모두 같아서 어느 파일이 나중인지 알 수 없어요. 파일을 눌러 내용을 확인한 뒤 최신 파일을 직접 골라 주세요.";
+    case "only":
+      return "나머지 파일은 이 파일과 내용이 똑같은 중복이라 비교에서 뺐어요. 내려받을 때도 중복 파일은 빠져요.";
+  }
+}
+
 function makeGroup(key: string, files: FileResult[]): Group {
   const candidates = rank(files.filter((f) => !f.duplicateOf)); // 호출하는 쪽이 1개 이상을 보장
   const dups = files.filter((f) => f.duplicateOf);

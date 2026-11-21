@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import rules from "../../rules/version-rules.json" with { type: "json" };
 import { analyze } from "./analyze.ts";
-import { rename, type RenameOptions } from "./rename.ts";
+import { DATE_FORMATS, rename, VERSION_FORMATS, type NamePart, type RenameOptions } from "./rename.ts";
 import type { InputFile } from "./types.ts";
 
 const make = (list: [name: string, mtime: string, content?: string][]): InputFile[] =>
@@ -111,4 +111,52 @@ test("중복만 남은 그룹은 내려받지 않음 (F-03-03)", () => {
   const f = (name: string, b: string, order: number) => ({ id: name, name, size: 1, lastModified: 0, order, batch: 1, bytes: new TextEncoder().encode(b) });
   const a = analyze([f("A.pptx", "X", 0), f("B.pptx", "Y", 1), f("발표자료_최종.pptx", "X", 2), f("발표자료_진짜최종.pptx", "Y", 3)], rules);
   assert.deepEqual(rename(a).filter((r) => r.download).map((r) => r.from), ["A.pptx", "B.pptx"]);
+});
+
+test("D-42 이름 칸 순서: 날짜를 앞으로, 잘못된 순서는 기본, 바꾼 이름을 다시 올려도 같은 그룹·같은 순서", () => {
+  const files: Parameters<typeof make>[0] = [["발표자료_최종.pptx", "11-18"], ["발표자료_진짜최종.pptx", "11-20"]];
+  const dateFirst = run(files, { scope: "all", pattern: ["date", "base", "version"] });
+  assert.deepEqual(table(dateFirst), {
+    "발표자료_진짜최종.pptx": "20261120_발표자료_v02.pptx",
+    "발표자료_최종.pptx": "20261118_발표자료_v01.pptx",
+  });
+  // 셋을 한 번씩 담지 않으면(번호 빠짐·중복) 기본 순서
+  const bad = run(files, { scope: "all", pattern: ["base", "date", "date"] });
+  assert.equal(table(bad)["발표자료_진짜최종.pptx"], "발표자료_v02_20261120.pptx");
+  // D-33: 정리한 이름을 다시 올려도 기본 이름이 같고 v 번호 순서대로. 수정 날짜를 거꾸로(v02가 더 이르게) 줘도 v 번호가 이김
+  const again = run(dateFirst.map((r, i) => [r.to!, `11-0${i + 1}`] as [string, string]), { scope: "all", pattern: ["date", "base", "version"] });
+  assert.deepEqual(table(again), {
+    "20261120_발표자료_v02.pptx": "20261101_발표자료_v02.pptx",
+    "20261118_발표자료_v01.pptx": "20261102_발표자료_v01.pptx",
+  });
+});
+
+test("D-43 표기 바꾸기: 버전·날짜 표기가 이름에 들어감", () => {
+  const files: Parameters<typeof make>[0] = [["보고서_v2.docx", "11-05"], ["보고서_v3.docx", "11-20"]];
+  const t = table(run(files, { scope: "all", versionFormat: "ver01", dateFormat: "yyyy-mm-dd" }));
+  assert.equal(t["보고서_v3.docx"], "보고서_ver02_2026-11-20.docx");
+  assert.equal(table(run(files, { scope: "all", versionFormat: "v1", dateFormat: "mmdd" }))["보고서_v2.docx"], "보고서_v1_1105.docx");
+});
+
+test("D-43 모든 순서·표기 조합: 정리한 이름을 다시 올려도 같은 기본 이름, v 번호 순서 그대로 (D-33)", () => {
+  const orders: NamePart[][] = [
+    ["base", "version", "date"], ["base", "date", "version"], ["version", "base", "date"],
+    ["version", "date", "base"], ["date", "base", "version"], ["date", "version", "base"],
+  ];
+  // 1월 5일: 한 자리 월·일(1월5일, 2026년1월5일)도 다시 읽히는지
+  const files: Parameters<typeof make>[0] = [["발표자료_최종.pptx", "11-18"], ["발표자료(1).pptx", "01-05"], ["발표자료_진짜최종.pptx", "11-20"]];
+  for (const pattern of orders) {
+    for (const versionFormat of VERSION_FORMATS) {
+      for (const dateFormat of DATE_FORMATS) {
+        const opts = { scope: "all" as const, pattern, versionFormat, dateFormat };
+        const first = run(files, opts);
+        // 다시 올릴 때 수정 날짜를 거꾸로 줘서, 순서가 v 번호로만 정해지는지 확인
+        const again = analyze(make(first.map((r, i) => [r.to!, `11-0${i + 1}`] as [string, string])), rules);
+        const label = `${pattern.join("-")} ${versionFormat} ${dateFormat}`;
+        assert.equal(again.groups.length, 1, `${label}: 한 그룹이어야 해요 (${first.map((r) => r.to).join(", ")})`);
+        assert.equal(again.groups[0].baseName, "발표자료", label);
+        assert.deepEqual(again.groups[0].files.map((f) => f.parsed.version?.n), [3, 2, 1], label);
+      }
+    }
+  }
 });
