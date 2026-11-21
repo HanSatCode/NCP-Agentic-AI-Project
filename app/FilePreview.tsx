@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { readDocText } from "@/src/analysis/metadata.ts";
+import { useSheet } from "./useSheet";
 
 const IMAGE_EXT = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"];
 const TEXT_EXT = ["txt", "md", "csv", "tsv", "json", "xml", "html", "htm", "css", "js", "ts", "tsx", "jsx", "py", "java", "c", "cpp", "h", "log", "yml", "yaml", "sql"];
@@ -79,6 +80,11 @@ export function PreviewBody({ file }: { file: File }) {
       }
       if (ext === "docx" || ext === "pptx") {
         setView({ kind: "office" });
+        return;
+      }
+      // 한글(hwp·hwpx)은 미리보기를 지원하지 않음. 예시 hwp는 글자 파일이라 글자로 보일 수 있어서 먼저 막음
+      if (ext === "hwp" || ext === "hwpx") {
+        setView({ kind: "none" });
         return;
       }
       const head = new Uint8Array(await file.slice(0, MAX_TEXT).arrayBuffer());
@@ -202,13 +208,17 @@ function OfficePreview({ file, ext, onFail }: { file: File; ext: string; onFail:
   );
 }
 
-export default function FilePreview({ file, onClose }: { file: File; onClose: () => void }) {
+export default function FilePreview({ file, onClose: closeNow }: { file: File; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const footCloseRef = useRef<HTMLButtonElement>(null); // 폰은 오른쪽 위 ×를 숨기므로 아래 [닫기]에 포커스
+  // 닫을 때 바로 없애지 않고 사라지는 애니메이션 뒤에 닫음. 폰에서는 아래에서 올라오는 시트라 손잡이를 끌어내려도 닫힘
+  const { closing, close: onClose, sheetRef, handleProps } = useSheet(closeNow);
 
   // 열리면 닫기 버튼에 포커스, Esc로 닫기, 뒤 화면 스크롤 막기
   useEffect(() => {
     const prevFocus = document.activeElement as HTMLElement | null;
-    closeRef.current?.focus();
+    // 숨긴 요소(offsetParent 없음)에는 포커스가 안 가므로 보이는 닫기 버튼에
+    (closeRef.current?.offsetParent ? closeRef.current : footCloseRef.current)?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -223,14 +233,16 @@ export default function FilePreview({ file, onClose }: { file: File; onClose: ()
   }, [onClose]);
 
   return (
-    <div className="viewer-backdrop" onClick={onClose}>
+    <div className={`viewer-backdrop ${closing ? "is-closing" : ""}`} onClick={onClose}>
       <div
-        className="viewer"
+        ref={sheetRef}
+        className={`viewer ${closing ? "is-closing" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="viewer-title"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="sheet-handle" aria-hidden {...handleProps} />
         <div className="viewer-head">
           <div className="viewer-title-wrap">
             <h3 id="viewer-title" className="viewer-title">
@@ -249,7 +261,7 @@ export default function FilePreview({ file, onClose }: { file: File; onClose: ()
 
         <div className="viewer-foot">
           <span className="spacer" />
-          <button type="button" className="btn primary" onClick={onClose}>
+          <button ref={footCloseRef} type="button" className="btn primary" onClick={onClose}>
             닫기
           </button>
         </div>

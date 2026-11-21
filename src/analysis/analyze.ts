@@ -88,7 +88,8 @@ export function reasonText(by: Group["decidedBy"], top: FileResult): string {
 // 변수 뒤에 조사가 바로 붙지 않게 "번호/날짜/표현/파일"을 붙여 씀 (받침에 따라 이/가가 달라져서)
 export function reasonDetail(g: Group): string {
   const [top, second] = g.files;
-  const next = second && !second.duplicateOf ? ` 바로 앞 버전은 '${second.name}' 파일이에요.` : "";
+  // 파일명 안의 띄어쓰기에서 줄이 갈리지 않게 줄바꿈 없는 공백으로 ("발표자료 / 최종수정.pptx" 방지)
+  const next = second && !second.duplicateOf ? ` 바로 앞 버전은 '${second.name.replace(/ /g, " ")}' 파일이에요.` : "";
   switch (g.decidedBy) {
     case "version":
       return `버전 번호를 가장 먼저 비교해요. 이 파일의 번호(${top.parsed.version!.raw})가 그룹에서 가장 커요.${next}`;

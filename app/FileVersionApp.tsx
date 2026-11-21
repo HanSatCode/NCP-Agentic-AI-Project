@@ -6,7 +6,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DragEvent, KeyboardEvent } from "react";
 import FilePreview, { PreviewBody } from "./FilePreview";
+import { useSheet } from "./useSheet";
 import Logo from "./Logo";
+import TypingName from "./TypingName";
 // 분석 로직은 src/analysis (화면 코드 없음, /check-result와 같은 함수). 규칙은 rules/version-rules.json
 import rules from "@/rules/version-rules.json";
 import type { Rules } from "@/src/analysis/baseName.ts";
@@ -42,7 +44,6 @@ const MSG = {
   M05: (n: number) => `최신 파일을 골라야 하는 그룹이 ${n}개 있어요`,
   M06: "기본 이름은 비워 둘 수 없어요",
   M07: "파일만 올릴 수 있어요",
-  M08: (n: number) => `파일 ${n}개를 내려받았어요`,
   // zip 올리기 (D-39)
   M09: (zip: string, n: number) => `'${zip}' 안의 파일 ${n}개는 열 수 없어서 빼고 올렸어요`,
   M10: (zip: string) => `'${zip}'은 풀 수 없어서 빼고 올렸어요`,
@@ -51,7 +52,7 @@ const MSG = {
 };
 
 type SortKey = "name" | "date" | "created" | "saved" | "size";
-type Toast = { id: number; text: string; kind: "info" | "warn" | "done" };
+type Toast = { id: number; text: string; kind: "info" | "warn" | "done"; leaving?: boolean };
 
 function formatDate(ts: number) {
   const d = new Date(ts);
@@ -158,6 +159,63 @@ function Swap({ k, children }: { k: string | number; children: React.ReactNode }
       </span>
     </span>
   );
+}
+
+/** 화면 폭 조건(미디어 쿼리)이 맞는지. 창 크기가 바뀌면 다시 그림 */
+function useMedia(query: string) {
+  const [matches, setMatches] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const update = () => setMatches(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [query]);
+  return matches;
+}
+
+/** 나타났다 사라지는 요소를 사라질 때 바로 지우지 않고 ms 동안 남겨 둠 → 그동안 .is-leaving으로 사라지는 애니메이션 */
+function usePresence(show: boolean, ms = 260) {
+  const [kept, setKept] = useState(show);
+  useEffect(() => {
+    if (show) {
+      setKept(true);
+      return;
+    }
+    const t = window.setTimeout(() => setKept(false), ms);
+    return () => window.clearTimeout(t);
+  }, [show, ms]);
+  return { mounted: show || kept, leaving: !show && kept };
+}
+
+/** 문장 속 파일명의 띄어쓰기에서 줄이 갈리지 않게 (줄바꿈 없는 공백) */
+const keepTogether = (name: string) => name.replace(/ /g, " ");
+
+/** 숫자가 0(또는 이전 값)에서 목표 값까지 0.6초 동안 올라감 (2단계 요약 숫자). 동작 줄이기 설정이면 바로 목표 값 */
+function CountUp({ value }: { value: number }) {
+  const [shown, setShown] = useState(0);
+  const from = useRef(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setShown(value);
+      from.current = value;
+      return;
+    }
+    const a = from.current;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / 600);
+      setShown(Math.round(a + (value - a) * (1 - (1 - p) ** 3))); // 끝에서 천천히
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      from.current = value;
+    };
+  }, [value]);
+  return <span className="count-up">{shown}</span>;
 }
 
 /** 글자가 바뀌는 버튼(분석하기 → 분석 중 → 끝났어요, 내려받기 → 요청했어요)의 크기를 처음부터 가장 긴 문구에 맞춤.
@@ -380,6 +438,9 @@ function PatternEditor({ value, onChange, maxVersions }: { value: NameFmt; onCha
   const [dragging, setDragging] = useState<NamePart | null>(null);
   const [focusPart, setFocusPart] = useState<NamePart | null>(null);
   const [menu, setMenu] = useState<NamePart | null>(null);
+  // 표기 목록 닫기: 사라지는 애니메이션 뒤에 닫음. 폰에서는 아래에서 올라오는 시트라 손잡이를 끌어내려도 닫힘
+  const closeMenuNow = useCallback(() => setMenu(null), []);
+  const sheet = useSheet(closeMenuNow, 200);
   const movedRef = useRef(false); // 이번에 누른 동안 자리를 옮겼으면 클릭(표기 고르기)으로 치지 않음
   const pattern = value.pattern;
 
@@ -440,7 +501,7 @@ function PatternEditor({ value, onChange, maxVersions }: { value: NameFmt; onCha
   useEffect(() => {
     if (!menu) return;
     const close = (e: Event) => {
-      if (e instanceof KeyboardEvent ? e.key === "Escape" : !rowRef.current?.contains(e.target as Node)) setMenu(null);
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !rowRef.current?.contains(e.target as Node)) sheet.close();
     };
     document.addEventListener("pointerdown", close);
     document.addEventListener("keydown", close);
@@ -480,7 +541,8 @@ function PatternEditor({ value, onChange, maxVersions }: { value: NameFmt; onCha
               }}
               onClick={() => {
                 if (movedRef.current || part === "base") return;
-                setMenu(menu === part ? null : part);
+                if (menu === part) sheet.close();
+                else setMenu(part);
               }}
               onFocus={() => setFocusPart(part)}
               onBlur={() => setFocusPart(null)}
@@ -512,7 +574,23 @@ function PatternEditor({ value, onChange, maxVersions }: { value: NameFmt; onCha
             {/* 버전 칸 오른쪽 위 모서리에 붙는 경고 (칸 버튼 밖이라 눌러도 표기 고르기가 안 열림) */}
             {part === "version" && v1Risk && <WarnTip label={V1_WARN} />}
             {menu === part && (
-              <div className="pattern-menu" role="menu" aria-label={`${PART_LABEL[part]} 표기`}>
+              <>
+              {/* 폰에서만 보이는 어두운 뒤판: 누르면 닫힘 (globals.css) */}
+              <div
+                className={`sheet-backdrop ${sheet.closing ? "is-closing" : ""}`}
+                aria-hidden
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  sheet.close();
+                }}
+              />
+              <div
+                ref={sheet.sheetRef}
+                className={`pattern-menu ${sheet.closing ? "is-closing" : ""}`}
+                role="menu"
+                aria-label={`${PART_LABEL[part]} 표기`}
+              >
+                <div className="sheet-handle" aria-hidden {...sheet.handleProps} />
                 {options(part).map((f) => (
                   <div key={f} className="pattern-menu-row" role="none">
                     <button
@@ -522,7 +600,7 @@ function PatternEditor({ value, onChange, maxVersions }: { value: NameFmt; onCha
                       className={current(part) === f ? "is-on" : ""}
                       onClick={() => {
                         onChange(part === "version" ? { ...value, versionFormat: f as VersionFormat } : { ...value, dateFormat: f as DateFormat });
-                        setMenu(null);
+                        sheet.close();
                       }}
                     >
                       <span className="pattern-menu-sample">{sample(part, f)}</span>
@@ -532,6 +610,7 @@ function PatternEditor({ value, onChange, maxVersions }: { value: NameFmt; onCha
                   </div>
                 ))}
               </div>
+              </>
             )}
           </span>
         ))}
@@ -618,6 +697,8 @@ function Scrollable({ className, grow, children }: { className: string; grow?: b
 
 export default function FileVersionApp() {
   const [items, setItems] = useState<Item[]>([]);
+  const m02 = usePresence(items.length === 1);
+  const narrow = useMedia("(max-width: 860px)"); // 2단계 오른쪽 미리보기 칸을 그릴지 (넓을 때만) // M-02 "파일이 2개 이상 필요해요": 나타나고 사라질 때 애니메이션
   const itemsRef = useRef<Item[]>([]);
   const batchRef = useRef(0);
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean } | null>(null);
@@ -646,6 +727,12 @@ export default function FileVersionApp() {
   const [dlSent, setDlSent] = useState(false); // [내려받기]를 누른 뒤 잠깐 초록 (D-46)
   const dlTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(dlTimer.current), []);
+  // iOS Safari는 터치 이벤트를 듣는 곳이 있어야 :active(누를 때 표시)를 그림 (globals.css의 터치 화면 구역)
+  useEffect(() => {
+    const noop = () => {};
+    document.addEventListener("touchstart", noop, { passive: true });
+    return () => document.removeEventListener("touchstart", noop);
+  }, []);
   const [nameFmt, setNameFmt] = useState<NameFmt>(DEFAULT_FMT); // 새 이름 칸 순서·표기 (D-42, D-43)
 
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -657,7 +744,15 @@ export default function FileVersionApp() {
 
   // 지금 보고 있는 단계. 한 화면에 한 단계만 보여준다
   const [view, setView] = useState<1 | 2 | 3>(1);
-
+  // 단계가 바뀐 방향. 폰에서 다음 단계는 오른쪽에서, [이전]으로 돌아가면 왼쪽에서 밀려 들어옴 (globals.css, D-47)
+  const prevViewRef = useRef(view);
+  const dirRef = useRef<"fwd" | "back">("fwd");
+  if (prevViewRef.current !== view) {
+    dirRef.current = view > prevViewRef.current ? "fwd" : "back";
+    prevViewRef.current = view;
+  }
+  // 빼는 중인 파일: 행이 옆으로 밀리며 접히는 애니메이션(0.26초) 뒤에 실제로 뺌
+  const [leaving, setLeaving] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   // 하단바 높이만큼 본문 아래를 비워 둠 (폰에서 버튼이 여러 줄이 되면 높이가 바뀜)
   const barRef = useRef<HTMLDivElement>(null);
@@ -679,6 +774,8 @@ export default function FileVersionApp() {
   function toast(text: string, kind: Toast["kind"] = "info") {
     const id = Date.now() + Math.random();
     setToasts((t) => [...t, { id, text, kind }]);
+    // 바로 지우면 뚝 사라지므로, 먼저 사라지는 애니메이션(0.3초)을 돌리고 끝나면 지움
+    setTimeout(() => setToasts((t) => t.map((x) => (x.id === id ? { ...x, leaving: true } : x))), 3700);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
   }
 
@@ -819,13 +916,29 @@ export default function FileVersionApp() {
     }
   }
 
+  // 빼는 행에 사라지는 애니메이션을 먼저 돌리고, 끝나면 실제로 목록에서 뺌 (동작 줄이기 설정이면 바로)
+  function leaveThen(ids: string[], done: () => void) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
+    setLeaving((s) => new Set([...s, ...ids]));
+    window.setTimeout(() => {
+      done();
+      setLeaving((s) => new Set([...s].filter((x) => !ids.includes(x))));
+    }, 260);
+  }
+
   function removeOne(id: string) {
-    updateItems(items.filter((x) => x.input.id !== id));
+    // 애니메이션 동안 다른 파일이 더해지거나 빠질 수 있어 지금 목록(itemsRef)에서 뺌
+    leaveThen([id], () => updateItems(itemsRef.current.filter((x) => x.input.id !== id)));
   }
 
   function clearAll() {
-    commitItems([]);
-    resetResults();
+    leaveThen(
+      itemsRef.current.map((x) => x.input.id),
+      () => {
+        commitItems([]);
+        resetResults();
+      },
+    );
   }
 
   const sortedItems = (() => {
@@ -994,7 +1107,7 @@ export default function FileVersionApp() {
     const result = makeDownload(rows, sources);
     if (!result) return;
     saveBlob(new Blob([result.data as BlobPart]), result.filename);
-    toast(MSG.M08(result.count), "done");
+    // M-08 알림은 띄우지 않고 버튼의 "다운로드를 요청했어요!"로 대신함 (D-46)
     // 버튼도 잠깐 초록으로 "다운로드를 요청했어요!" (브라우저가 실제로 저장을 마쳤는지는 알 수 없어서 "요청"으로 씀)
     setDlSent(true);
     window.clearTimeout(dlTimer.current);
@@ -1014,10 +1127,14 @@ export default function FileVersionApp() {
     <div className="app">
       {/* S-01 상단 헤더 */}
       <header className="header">
-        <h1 className="brand-title" aria-label="Filefit 파일핏">
+        {/* 서비스 이름 "진짜최종.zip" (D-49): 팀플 파일 이름 습관을 그대로 이름으로. ".zip"만 파랑, 아래 한 줄 설명 */}
+        <h1 className="brand-title" aria-label="진짜최종.zip">
           <Logo size={38} />
-          <span className="wordmark" aria-hidden>
-            File<span className="wordmark-fit">fit</span>
+          <span className="brand-text">
+            <span className="wordmark" aria-hidden>
+              <TypingName />
+            </span>
+            <span className="brand-tagline">비슷한 파일을 올리면 최신 버전을 찾아 이름을 정리해 드려요</span>
           </span>
         </h1>
         <nav className="stepper" aria-label="진행 단계" inert={busy}>
@@ -1045,7 +1162,7 @@ export default function FileVersionApp() {
 
       {/* S-02 STEP 1 파일 업로드 */}
       {view === 1 && (
-      <section className="panel" aria-labelledby="s02-title" inert={busy}>
+      <section className="panel" data-dir={dirRef.current} aria-labelledby="s02-title" inert={busy}>
         <SectionHead
           id="s02-title"
           title="파일 업로드"
@@ -1071,7 +1188,7 @@ export default function FileVersionApp() {
                   <thead>
                     <tr>
                       {sortTh("name", "파일명")}
-                      {sortTh("date", "수정 날짜", "", "파일에 기록된 수정 날짜예요. 카톡으로 받은 파일은 받은 시각일 수 있어요")}
+                      {sortTh("date", "수정 날짜", "col-date", "파일에 기록된 수정 날짜예요. 카톡으로 받은 파일은 받은 시각일 수 있어요")}
                       {sortTh("created", "만든 시각", "col-meta", "문서 안에 기록된 처음 만든 시각이에요 (docx·pptx·xlsx만 있어요)")}
                       {sortTh("saved", "저장 시각", "col-meta", "문서 안에 기록된 마지막 저장 시각이에요 (docx·pptx·xlsx만 있어요)")}
                       {sortTh("size", "크기", "col-size")}
@@ -1082,14 +1199,16 @@ export default function FileVersionApp() {
                   </thead>
                   <tbody>
                     {sortedItems.map((x, i) => (
-                      <tr key={x.input.id} style={stagger(i)}>
+                      <tr key={x.input.id} style={stagger(i)} className={leaving.has(x.input.id) ? "is-leaving" : undefined}>
                         <td className="name">
                           <span className="name-cell">
                             <FileTypeIcon name={x.file.name} />
-                            <span>{x.file.name}</span>
+                            <span className="name-text" title={x.file.name}>
+                              {x.file.name}
+                            </span>
                           </span>
                         </td>
-                        <td className="nowrap">{formatDate(x.file.lastModified)}</td>
+                        <td className="nowrap col-date">{formatDate(x.file.lastModified)}</td>
                         <td className="nowrap col-meta">{x.meta.created ? formatDate(x.meta.created) : "—"}</td>
                         <td className="nowrap col-meta">{x.meta.saved ? formatDate(x.meta.saved) : "—"}</td>
                         <td className="nowrap col-size">{formatSize(x.file.size)}</td>
@@ -1175,7 +1294,7 @@ export default function FileVersionApp() {
 
       {/* S-03 STEP 2 분석 결과 */}
       {view === 2 && analysis && (
-        <section className="panel" aria-labelledby="s03-title">
+        <section className="panel" data-dir={dirRef.current} aria-labelledby="s03-title">
           <SectionHead
             id="s03-title"
             title="분석 결과"
@@ -1185,21 +1304,21 @@ export default function FileVersionApp() {
                 <div className="stat">
                   <dt>그룹</dt>
                   <dd>
-                    <Swap k={analysis.groups.length}>{analysis.groups.length}</Swap>
+                    <CountUp value={analysis.groups.length} />
                     <small>개</small>
                   </dd>
                 </div>
                 <div className="stat">
                   <dt>단독</dt>
                   <dd>
-                    <Swap k={analysis.singles.length}>{analysis.singles.length}</Swap>
+                    <CountUp value={analysis.singles.length} />
                     <small>개</small>
                   </dd>
                 </div>
                 <div className="stat">
                   <dt>중복</dt>
                   <dd>
-                    <Swap k={analysis.duplicates}>{analysis.duplicates}</Swap>
+                    <CountUp value={analysis.duplicates} />
                     <small>개</small>
                   </dd>
                 </div>
@@ -1275,10 +1394,10 @@ export default function FileVersionApp() {
                   {/* key: 추천 ↔ 직접 선택, 직접 고른 파일끼리 바꿀 때도 새로 그려서 나타나는 애니메이션이 돎 */}
                   {own ? (
                     <div className="reason-content" key={`own-${selected[activeG.key]}`}>
-                      <p className="reason-text">&apos;{pickedName}&apos; 파일을 직접 골랐어요.</p>
+                      <p className="reason-text">&apos;{keepTogether(pickedName!)}&apos; 파일을 직접 골랐어요.</p>
                       <p className="reason-detail">
                         {latestName
-                          ? `추천은 '${latestName}' 파일이었지만, 고른 파일을 최신으로 보고 가장 큰 번호를 붙여요.`
+                          ? `추천은 '${keepTogether(latestName)}' 파일이었지만, 고른 파일을 최신으로 보고 가장 큰 번호를 붙여요.`
                           : "단서로는 고를 수 없던 그룹이라, 고른 파일을 최신으로 보고 가장 큰 번호를 붙여요."}
                       </p>
                     </div>
@@ -1380,6 +1499,9 @@ export default function FileVersionApp() {
           </Scrollable>
           </div>
 
+          {/* 860px 이하에서는 아예 그리지 않음: 숨긴(display:none) 칸에서 미리보기를 다시 그리면
+              브라우저가 페이지를 맨 위로 올려 버림. 폰은 행을 누르면 팝업으로 봄 */}
+          {!narrow && (
           <aside className="file-detail" aria-label="파일 정보">
             {focusResult && focusItem && (
               <div className="detail-inner" key={focusResult.id}>
@@ -1396,6 +1518,7 @@ export default function FileVersionApp() {
               </div>
             )}
           </aside>
+          )}
           </div>
 
         </section>
@@ -1403,7 +1526,7 @@ export default function FileVersionApp() {
 
       {/* S-04 STEP 3 이름 변경·내려받기 */}
       {view === 3 && analysis && showRename && (
-        <section className="panel" aria-labelledby="s04-title">
+        <section className="panel" data-dir={dirRef.current} aria-labelledby="s04-title">
           <SectionHead
             id="s04-title"
             title="이름 변경"
@@ -1593,7 +1716,7 @@ export default function FileVersionApp() {
         <div className="actions" key={view}>
           {view === 1 && (
             <>
-              {items.length === 1 && <p className="hint warn">{MSG.M02}</p>}
+              {m02.mounted && <p className={`hint warn ${m02.leaving ? "is-leaving" : "swap"}`}>{MSG.M02}</p>}
               <span className="spacer" />
               {/* [체험하기] = 예시 파일 불러오기 (F-01-03, D-36) */}
               <button type="button" className="btn" disabled={analyzing || busy} onClick={onLoadSamples}>
@@ -1680,7 +1803,7 @@ export default function FileVersionApp() {
 
       <div className="toasts" role="status" aria-live="polite">
         {toasts.map((t) => (
-          <div key={t.id} className={`toast ${t.kind}`}>
+          <div key={t.id} className={`toast ${t.kind} ${t.leaving ? "is-leaving" : ""}`}>
             {t.text}
           </div>
         ))}
