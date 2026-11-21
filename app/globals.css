@@ -1,8 +1,8 @@
 /* =====================================================================
-   파일 버전 정리 — 미니멀 · 신뢰감
+   진짜최종.zip — 정돈된 도구 + 팀플 장난기 한 스푼 (기준: DESIGN.md)
    - 바탕은 흰색/아주 옅은 회색, 글자는 남색빛 검정(ink)
    - 상자는 1px 옅은 테두리 + 아주 약한 그림자 (또렷하고 정돈된 느낌)
-   - 브랜드 컬러는 파랑(--brand, 로고의 "fit"과 같은 색): 주 버튼·지금 단계·선택·강조
+   - 브랜드 컬러는 파랑(--brand, 워드마크 ".zip"과 같은 색): 주 버튼·지금 단계·선택·강조
    - 그 밖의 색은 뜻이 있을 때만: 초록 = 완료·추천·안전
      노랑 = 확인 필요 / 회색 = 빠진 것 / 빨강 = 오류
    - 보조 글자도 흰 바탕 대비 4.5:1 이상
@@ -109,13 +109,23 @@ main {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  animation: page-in 0.45s var(--ease-out); /* 소개 화면에서 넘어올 때 아래에서 살짝 올라옴 (StartLink) */
+  /* 소개 화면에서 넘어올 때 나타남. transform·filter는 쓰지 않음: 안의 고정 하단바(position: fixed)가 화면 대신 .app에 붙어 버림 */
+  animation: page-fade 0.45s var(--ease-out);
 }
 @keyframes page-in {
   from {
     opacity: 0;
     transform: translateY(16px);
   }
+}
+@keyframes page-fade {
+  from {
+    opacity: 0;
+  }
+}
+/* 올라오는 움직임은 헤더에만 (고정 하단바가 없는 곳) */
+.app > .header {
+  animation: page-in 0.45s var(--ease-out);
 }
 h1,
 h2,
@@ -1978,7 +1988,7 @@ main {
 }
 
 
-/* 서비스 이름의 "fit"만 파랑 (로고 마크의 파란 종이와 같은 색) */
+/* 서비스 이름의 ".zip"만 파랑 */
 .wordmark-fit {
   color: var(--accent);
 }
@@ -3155,4 +3165,19 @@ p,
 .brand-link:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* 정리 도구(.app)에서 로고를 눌러 소개로 갈 때: 흐려지며 사라짐 (StartLink). .app에는 투명도만 (고정 하단바가 풀리지 않게), 헤더만 살짝 떠오름 */
+.app {
+  transition: opacity 0.32s var(--ease-out);
+}
+.app.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+.app > .header {
+  transition: transform 0.32s var(--ease-out);
+}
+.app.is-leaving > .header {
+  transform: translateY(-14px);
 }

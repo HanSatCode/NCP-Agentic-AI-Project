@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DragEvent, KeyboardEvent } from "react";
-import Link from "next/link";
+import StartLink from "./StartLink";
 import FilePreview, { PreviewBody } from "./FilePreview";
 import { useSheet } from "./useSheet";
 import Logo from "./Logo";
@@ -1131,15 +1131,15 @@ export default function FileVersionApp() {
         {/* 서비스 이름 "진짜최종.zip" (D-49): 팀플 파일 이름 습관을 그대로 이름으로. ".zip"만 파랑, 아래 한 줄 설명 */}
         <h1 className="brand-title">
           {/* 로고를 누르면 첫 화면(소개)으로. 올린 파일이 있으면 목록이 사라지므로 먼저 묻는다 */}
-          <Link
+          <StartLink
             href="/"
+            leave=".app"
             className="brand-link"
             aria-label="진짜최종.zip, 소개 화면으로"
             title="소개 화면으로"
-            onClick={(e) => {
-              if (items.length > 0 && !window.confirm("소개 화면으로 가면 올린 파일 목록이 사라져요. 이동할까요?"))
-                e.preventDefault();
-            }}
+            confirm={() =>
+              items.length === 0 || window.confirm("소개 화면으로 가면 올린 파일 목록이 사라져요. 이동할까요?")
+            }
           >
             <Logo size={38} />
             <span className="brand-text">
@@ -1148,7 +1148,7 @@ export default function FileVersionApp() {
               </span>
               <span className="brand-tagline">비슷한 파일을 올리면 최신 버전을 찾아 이름을 정리해 드려요</span>
             </span>
-          </Link>
+          </StartLink>
         </h1>
         <nav className="stepper" aria-label="진행 단계" inert={busy}>
           {steps.map((s) => {

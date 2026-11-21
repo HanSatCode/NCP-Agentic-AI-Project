@@ -4,24 +4,8 @@ import Link from "next/link";
 import Logo from "./Logo";
 import TypingName from "./TypingName";
 import StartLink from "./StartLink";
+import IntroDemo from "./IntroDemo";
 import "./intro.css";
-
-const BEFORE = [
-  "발표자료(1).pptx",
-  "발표자료_최종.pptx",
-  "발표자료 최종수정.pptx",
-  "발표자료_진짜최종.pptx",
-  "보고서_v2.docx",
-  "보고서_v3.docx",
-  "보고서_v3 복사본.docx",
-  "회의록_1115.docx",
-];
-
-const AFTER = [
-  { group: "발표자료", count: 4, from: "발표자료_진짜최종.pptx", to: "발표자료_v04_20261120.pptx" },
-  { group: "보고서", count: 3, from: "보고서_v3.docx", to: "보고서_v02_20261120.docx", note: "내용이 같은 복사본 1개는 뺐어요" },
-  { group: "회의록", count: 1, from: "회의록_1115.docx", to: "회의록_v01_20261115.docx" },
-];
 
 const STEPS = [
   {
@@ -74,9 +58,10 @@ export default function Intro() {
           <h1 className="intro-title">
             {/* 세 번째 이름을 썼다 지웠다 한다. 화면 읽기 프로그램에는 고정 문장 */}
             <span className="sr-only">최종, 진짜최종, 최종(1)…</span>
-            {/* 바뀌는 이름이 줄 사이를 오가지 않게 한 덩어리로 묶고, 폰에서는 이름 앞에서 줄을 바꿈 */}
+            {/* 바뀌는 이름은 늘 따로 한 줄 (가장 긴 "이거_건들지마"가 와도 줄이 넘어가지 않게) */}
             <span aria-hidden>
-              최종, 진짜최종, <br className="intro-br-phone" />
+              최종, 진짜최종,
+              <br />
               <span className="intro-nowrap">
                 <TypingName names={HERO_NAMES} zip={false} />…
               </span>
@@ -86,15 +71,16 @@ export default function Intro() {
             <span className="intro-nowrap">찾아 드려요</span>
           </h1>
           <p className="intro-lead">
-            카톡으로 주고받다 쌓인 파일을 한 번에 올려 주세요. 같은 문서끼리 묶고, 최신으로 보이는 파일을 골라 이름까지
-            정리해 드려요.
+            카톡으로 주고받다 쌓인 파일을 한 번에 올려 주세요.
+            <br />
+            같은 문서끼리 묶고, 최신으로 보이는 파일을 골라 이름까지 정리해 드려요.
           </p>
           <div className="intro-cta">
             <StartLink className="btn primary">
               지금 정리하기
             </StartLink>
             <a href="#how" className="btn">
-              어떻게 하는지 보기
+              무슨 원리인가요?
             </a>
           </div>
           <p className="intro-trust">
@@ -102,42 +88,10 @@ export default function Intro() {
           </p>
         </div>
 
-        <div className="intro-demo" aria-label="정리 전과 후 예시">
-          <div className="demo-card">
-            <p className="demo-label">정리 전 · 파일 8개</p>
-            <ul className="demo-before">
-              {BEFORE.map((n) => (
-                <li key={n}>
-                  <FileIcon />
-                  {n}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="demo-arrow" aria-hidden>
-            →
-          </div>
-          <div className="demo-card is-after">
-            <p className="demo-label">정리 후 · 문서 3개</p>
-            <ul className="demo-after">
-              {AFTER.map((g) => (
-                <li key={g.group}>
-                  <div className="demo-group">
-                    <strong>{g.group}</strong>
-                    <span className="demo-count">파일 {g.count}개</span>
-                    <span className="demo-badge">최신 후보</span>
-                  </div>
-                  <p className="demo-from">{g.from}</p>
-                  <p className="demo-to">→ {g.to}</p>
-                  {g.note && <p className="demo-note">{g.note}</p>}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        <IntroDemo />
       </section>
 
-      {/* 3단계 */}
+      {/* 3단계 ([무슨 원리인가요?]가 여기로 부드럽게 내려옴) */}
       <section id="how" className="intro-section">
         <h2 className="intro-h2">세 단계면 끝나요</h2>
         <p className="intro-sub">설치도 회원가입도 필요 없어요. 주소를 열고 파일을 끌어다 놓으면 돼요.</p>
@@ -207,18 +161,7 @@ export default function Intro() {
           정리 시작하기
         </StartLink>
       </section>
-
-      <footer className="intro-footer">© 2026 진짜최종.zip · 예시 파일 이름은 모두 가상이에요</footer>
     </div>
-  );
-}
-
-function FileIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
-      <path d="M4 1.5h5.5L13 5v9.5H4z" />
-      <path d="M9.5 1.5V5H13" />
-    </svg>
   );
 }
 

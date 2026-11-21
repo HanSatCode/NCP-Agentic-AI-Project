@@ -349,11 +349,6 @@ main:has(> .intro) {
   max-width: 32em;
   color: #c6ccd8;
 }
-.intro-footer {
-  padding-block: 24px;
-  font-size: 12.5px;
-  color: var(--muted);
-}
 
 /* ---------- 좁은 화면 ---------- */
 @media (max-width: 960px) {
@@ -399,9 +394,6 @@ main:has(> .intro) {
 .intro-nowrap {
   white-space: nowrap;
 }
-.intro-br-phone {
-  display: none;
-}
 .intro-h2,
 .intro-final h2,
 .intro-step h3,
@@ -413,11 +405,6 @@ main:has(> .intro) {
 .intro-lead {
   text-wrap: pretty;
 }
-@media (max-width: 640px) {
-  .intro-br-phone {
-    display: inline;
-  }
-}
 
 /* ---------- [시작하기]를 누르면: 소개 화면이 살짝 떠오르며 흐려지고 /start가 아래에서 올라옴 (StartLink) ---------- */
 .intro {
@@ -428,4 +415,228 @@ main:has(> .intro) {
   transform: translateY(-14px) scale(0.985);
   filter: blur(2px);
   pointer-events: none;
+}
+
+/* 예시 카드의 파일 이름은 중간에서 갈리지 않게. 두 칸에 다 안 들어가는 폭(1100px 이하)은 예시를 글 아래로 */
+.demo-before li,
+.demo-from,
+.demo-to {
+  white-space: nowrap;
+}
+@media (max-width: 1100px) {
+  .intro-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- 예시 상호작용 (IntroDemo): 고른 묶음의 파일만 밝게, 최신은 초록·중복은 줄 긋기 ---------- */
+.demo-before li {
+  padding-inline: 0.5em;
+  margin-inline: -0.5em;
+  border-radius: var(--radius-sm);
+  transition: opacity 0.3s var(--ease-out), background-color 0.3s var(--ease-out), color 0.3s var(--ease-out);
+}
+.demo-before li.is-off {
+  opacity: 0.35;
+}
+.demo-before li.is-on {
+  color: var(--ink);
+  background: var(--accent-bg);
+}
+.demo-before li.is-latest {
+  background: var(--green-bg);
+  font-weight: 600;
+}
+.demo-before li.is-dup .demo-name {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.demo-tag {
+  margin-left: auto;
+  padding: 0.1em 0.6em;
+  border-radius: 999px;
+  font-size: 0.75em;
+  font-weight: 700;
+  animation: rise-in 0.3s var(--ease-out);
+}
+.demo-tag.is-latest {
+  background: var(--surface);
+  color: var(--green);
+}
+.demo-tag.is-dup {
+  background: var(--surface);
+  color: var(--gray);
+}
+.demo-hint {
+  float: right;
+  font-weight: 500;
+  color: var(--faint);
+}
+.demo-after li {
+  padding-inline: 0.7em;
+  margin-inline: -0.7em;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.3s var(--ease-out);
+}
+.demo-after li:first-child {
+  padding-top: 0.8em;
+}
+.demo-after li.is-on {
+  background: var(--accent-bg);
+}
+.demo-after li:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+@media (max-width: 1100px) {
+  /* 한 칸으로 쌓일 때는 첫 화면 높이를 고정하지 않음 (가운데가 비지 않게) */
+  .intro-hero {
+    min-height: 0;
+  }
+}
+.demo-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.demo-tag {
+  flex: none;
+}
+
+/* ---------- [무슨 원리인가요?]: 아래 구역으로 흐르듯 내려감 (소개 화면에서만, 동작 줄이기면 바로) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.intro) {
+    scroll-behavior: smooth;
+  }
+}
+.intro-section {
+  scroll-margin-top: 24px;
+}
+/* 정리 도구에서 로고를 눌러 돌아올 때도 아래에서 살짝 올라옴 (StartLink) */
+.intro {
+  animation: page-in 0.45s var(--ease-out);
+}
+
+/* ---------- 예시 24개: 정리 전은 두 줄로 나눠 담고, 정리 후는 한 묶음에 두 줄로 짧게 ---------- */
+.intro-hero {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+.intro-title {
+  font-size: clamp(30px, 3.5vw, 68px);
+}
+.intro-demo {
+  grid-template-columns: minmax(0, 1.35fr) auto minmax(0, 1fr);
+  font-size: clamp(12.5px, 0.55vw + 6px, 17px);
+}
+.demo-before {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 0.4em;
+}
+.demo-before li {
+  margin-inline: 0;
+  padding: 0.32em 0.45em;
+  gap: 0.4em;
+}
+.demo-after li {
+  padding: 0.45em 0.7em;
+}
+.demo-after li:first-child {
+  padding-top: 0.45em;
+}
+.demo-after .demo-group {
+  font-size: 1em;
+}
+.demo-after .demo-to {
+  margin-top: 0.1em;
+  font-size: 0.9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 1100px) {
+  .intro-hero {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  /* 폰: 정리 전 목록은 한 줄로, 위아래로 쌓임 */
+  .demo-before {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 마지막 안내 한 줄 ("파일이 없어도 괜찮아요…"). 폰에서만 줄바꿈 */
+.intro-final p {
+  max-width: none;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .intro-final p {
+    white-space: normal;
+  }
+}
+
+/* ---------- 예시를 눈에 띄게 (IntroDemo) ---------- */
+/* 글자를 끌어 선택하지 않게 (누르고 올리는 예시라서) */
+.intro-demo {
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* 처음: 정리 전 파일이 차례로 떠오르고, 이어서 정리 후 묶음이 들어옴 */
+.demo-before .demo-name {
+  animation: rise-in 0.4s var(--ease-out) both;
+  animation-delay: calc(0.2s + var(--i) * 35ms);
+}
+.demo-after li > * {
+  animation: demo-slide-in 0.45s var(--ease-out) both;
+  animation-delay: calc(1.1s + var(--i) * 70ms);
+}
+@keyframes demo-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+/* 묶음이 바뀔 때: 그 묶음 파일이 톡 튀며 빛남, 최신 파일은 초록으로 더 크게 */
+.demo-before li.is-on {
+  animation: demo-pop 0.5s var(--ease-out);
+}
+.demo-before li.is-latest {
+  animation: demo-pop-latest 0.5s var(--ease-out);
+  box-shadow: inset 0 0 0 1px rgba(22, 121, 74, 0.25);
+}
+@keyframes demo-pop {
+  40% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 4px var(--ring);
+  }
+}
+@keyframes demo-pop-latest {
+  40% {
+    transform: scale(1.09);
+    box-shadow: 0 0 0 5px rgba(22, 121, 74, 0.25);
+  }
+}
+/* 화살표: 평소엔 살짝 흔들리고, 묶음이 바뀌면 한 번 앞으로 밀려 나감 */
+.demo-arrow {
+  animation: demo-nudge 0.6s var(--ease-out), demo-bob 2.4s 0.6s ease-in-out infinite;
+}
+@keyframes demo-nudge {
+  40% {
+    transform: translateX(8px) scale(1.25);
+  }
+}
+@keyframes demo-bob {
+  50% {
+    transform: translateX(4px);
+  }
+}
+/* 고른 묶음: 살짝 밀려 나옴 */
+.demo-after li {
+  transition: background-color 0.3s var(--ease-out), transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+}
+.demo-after li.is-on {
+  transform: translateX(-4px);
 }
