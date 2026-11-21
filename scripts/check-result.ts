@@ -7,9 +7,11 @@ import expected from "../public/samples/expected.json" with { type: "json" };
 import manifest from "../public/samples/manifest.json" with { type: "json" };
 import { parseName } from "../src/analysis/baseName.ts";
 import { findDuplicates } from "../src/analysis/duplicate.ts";
+import { analyze } from "../src/analysis/analyze.ts";
 import type { InputFile } from "../src/analysis/types.ts";
 
 type ExpectedFile = { path: string; baseName?: string; duplicateOf?: string; newName?: string | null };
+type ExpectedGroup = { baseName: string; status: string; latest: string | null; reason?: string };
 const ROOT = path.join(import.meta.dirname, "..", "public", "samples");
 const dates = manifest as Record<string, { lastModified: string }>;
 
@@ -48,6 +50,31 @@ for (const sc of expected.scenarios) {
     const got = dupOf.get(name) ?? null;
     const exp = f.duplicateOf ?? null;
     if (got !== exp) errors.push(`${name}: 중복 대상 '${got ?? "없음"}', 기대 '${exp ?? "없음"}'`);
+  }
+
+  // F-02-02~04, F-02-07 그룹·최신 후보·추천 이유·단독 파일
+  const result = analyze(files, rules);
+  const groups = (sc as { groups?: ExpectedGroup[] }).groups;
+  if (groups) {
+    const gotOrder = result.groups.map((g) => g.baseName).join(", ");
+    const wantOrder = groups.map((g) => g.baseName).join(", ");
+    if (gotOrder !== wantOrder) errors.push(`그룹 순서 '${gotOrder}', 기대 '${wantOrder}'`);
+    for (const w of groups) {
+      const g = result.groups.find((g) => g.baseName === w.baseName);
+      if (!g) continue;
+      if (g.status !== w.status) errors.push(`${w.baseName}: 배지 '${g.status}', 기대 '${w.status}'`);
+      if (g.latestId !== w.latest) errors.push(`${w.baseName}: 최신 후보 '${g.latestId}', 기대 '${w.latest}'`);
+      if (w.reason !== undefined && g.reason !== w.reason) errors.push(`${w.baseName}: 이유 '${g.reason}', 기대 '${w.reason}'`);
+    }
+  }
+  const singles = (sc as { singles?: string[] }).singles;
+  if (singles && result.singles.map((f) => f.name).join(", ") !== singles.join(", ")) {
+    errors.push(`단독 파일 '${result.singles.map((f) => f.name).join(", ")}', 기대 '${singles.join(", ")}'`);
+  }
+  const s = sc as { summary?: string; blockedGroups?: number };
+  if (s.summary !== undefined && result.summary !== s.summary) errors.push(`요약 '${result.summary}', 기대 '${s.summary}'`);
+  if (s.blockedGroups !== undefined && result.needsChoice !== s.blockedGroups) {
+    errors.push(`확인 필요 그룹 ${result.needsChoice}개, 기대 ${s.blockedGroups}개`);
   }
 
   failures += errors.length;

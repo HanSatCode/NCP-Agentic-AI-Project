@@ -65,7 +65,7 @@
         { "path": "edge/자료_v2 - 복사본.pdf", "baseName": "자료", "duplicateOf": "자료_v2.pdf", "newName": null }
       ],
       "groups": [
-        { "baseName": "자료", "status": "최신 후보", "latest": "자료_v2.pdf" }
+        { "baseName": "자료", "status": "최신 후보", "latest": "자료_v2.pdf", "reason": "중복을 빼면 이 파일만 남아요" }
       ]
     }
   ]
