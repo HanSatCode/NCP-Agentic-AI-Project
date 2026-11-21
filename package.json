@@ -1,13 +1,15 @@
 {
   "name": "file-version-helper",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node --test \"src/**/*.test.ts\""
   },
   "engines": {
-    "node": ">=22.13"
+    "node": ">=22.18"
   },
   "dependencies": {
     "next": "^16.4.6",
