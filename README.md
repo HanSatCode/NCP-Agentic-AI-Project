@@ -32,4 +32,14 @@ npm run check   # 예시 파일로 분석 결과 검사 (/check-result)
 npm run qa      # 전체 QA: 규칙·기본 이름·애매한 경우·무작위 파일명 검사 (/QA, SEED=숫자로 바꿔 돌리기)
 ```
 
-배포용 빌드는 `npm run build` 후 `npm start`.
+## 배포 (NGINX, http://공인IP/file-version/)
+
+서버 기능이 없어서(파일은 브라우저에서만 처리) 정적 파일로 빌드해 NGINX가 바로 서빙한다. Node는 서버에 필요 없다.
+
+```powershell
+$env:BASE_PATH="/file-version"; npm run build   # out/ 폴더가 생김
+# Git Bash: MSYS_NO_PATHCONV=1 BASE_PATH=/file-version npm run build  (안 붙이면 경로가 C:/Program Files/Git/...로 바뀜)
+scp -r out/* <사용자>@<공인IP>:/tmp/file-version/
+```
+
+서버에서는 `out/` 내용을 `/var/www/file-version/`에 복사하고, `deploy/nginx.conf`의 location을 80번 포트 server 블록에 붙인 뒤 `sudo nginx -t && sudo systemctl reload nginx`.

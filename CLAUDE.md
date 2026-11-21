@@ -36,7 +36,7 @@
 |---|---|
 | 기술 스택 | Next.js (App Router, TypeScript), Node.js 22.18 이상 |
 | 로컬 실행 방법 | `npm install` 후 `npm run dev` → http://localhost:3000 |
-| 배포 주소 | http://(공인IP) — https가 아니다 |
+| 배포 주소 | http://(공인IP)/file-version/ — https가 아니다. NGINX 80번 포트의 하위 경로 (`deploy/nginx.conf`) |
 | 처리 방식 | 브라우저에서만 처리 (D-17) |
 
 - 비어 있는 칸이 작업에 필요하면 임의로 정하지 말고 먼저 물어본다
@@ -54,6 +54,8 @@
 | `scripts/make-samples.ts` | 예시 파일 만들기 + 수정 날짜 맞추기 (`npm run samples`) | `/make-samples` |
 | `scripts/check-result.ts` | 예시 파일로 분석 결과 검사 (`npm run check`) | `/check-result` |
 | `scripts/qa.ts` | 규칙·기본 이름·시나리오·무작위 불변식 검사 (`npm run qa`) | `/QA` |
+| `next.config.ts` | 정적 내보내기(`out/`), 하위 경로(`BASE_PATH`) | 배포 |
+| `deploy/nginx.conf` | NGINX location 설정과 올리는 순서 | 배포 |
 
 - 기술 스택에 맞춰 위치를 바꿔도 된다(예: 예시 파일은 브라우저가 받을 수 있는 공개 폴더). 바꾸면 이 표도 고친다
 - 분석 로직은 화면 코드와 섞지 않는다. `/check-result`가 브라우저 없이 같은 함수를 돌려 검사한다

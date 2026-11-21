@@ -57,6 +57,21 @@ test("F-01-03: 예시 파일 8개를 manifest 수정 날짜로 불러옴 (D-14)"
   await assert.rejects(loadSamples(fakeFetch, "/없는폴더/"), /예시 파일 목록을 불러오지 못했어요/);
 });
 
+test("F-01-03: 하위 경로에 배포하면 예시 파일 주소에도 그 경로가 붙음", async () => {
+  const urls: string[] = [];
+  const prefixed = ((url: string) => {
+    urls.push(url);
+    return fakeFetch(url.replace(/^\/file-version/, ""));
+  }) as typeof fetch;
+  process.env.NEXT_PUBLIC_BASE_PATH = "/file-version";
+  try {
+    assert.equal((await loadSamples(prefixed)).length, 8);
+  } finally {
+    delete process.env.NEXT_PUBLIC_BASE_PATH;
+  }
+  assert.ok(urls.every((u) => u.startsWith("/file-version/samples/")), urls[0]);
+});
+
 test("시연 흐름: 예시 불러오기 → 분석 → 이름 변경 → 최신 파일만 내려받기", async () => {
   const files = await loadSamples(fakeFetch);
   const { accepted } = acceptFiles([], files);
