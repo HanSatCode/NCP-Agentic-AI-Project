@@ -41,6 +41,15 @@ test("D-01: 최종_수정은 최종수정 30점, 이유에는 적힌 그대로",
   assert.equal(p("발표 찐최종.pptx").keyword?.score, 40);
 });
 
+test("D-26: 키워드 뒤 '본'까지 지우고 점수는 같음", () => {
+  for (const [name, score] of [["발표자료_수정본.pptx", 10], ["발표자료_최종본.pptx", 20], ["발표자료_최종_수정본.pptx", 30], ["발표자료 진짜최종본.pptx", 40]] as const) {
+    assert.equal(p(name).baseName, "발표자료", name);
+    assert.equal(p(name).keyword?.score, score, name);
+  }
+  assert.equal(p("발표자료_최종본.pptx").keyword?.raw, "최종본");
+  assert.equal(p("정리본.docx").baseName, "정리본"); // "본" 단독은 키워드 아님
+});
+
 test("영문은 대소문자 구분 안 함", () => {
   const r = p("report_FINAL_V2.docx");
   assert.equal(r.baseName, "report");

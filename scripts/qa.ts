@@ -17,7 +17,8 @@ const ask = (stage: string, id: string, detail: string) => out.push({ stage, id,
 
 // ---------- 규칙 ----------
 const kw = Object.fromEntries(rules.keywords.map((k) => [k.word, k.score]));
-check("규칙", "키워드·점수 = CLAUDE.md", kw, { 진짜최종: 40, 찐최종: 40, 최종수정: 30, 최종: 20, final: 20, 완성: 20, 제출: 20, 수정: 10 });
+check("규칙", "키워드·점수 = CLAUDE.md", kw, { 진짜최종본: 40, 진짜최종: 40, 찐최종본: 40, 찐최종: 40, 최종수정본: 30, 최종수정: 30, 최종본: 20, 최종: 20,
+  final: 20, 완성본: 20, 완성: 20, 제출본: 20, 제출: 20, 수정본: 10, 수정: 10 });
 for (const p of [...rules.copyMarks, ...rules.dates, rules.version, rules.separators]) {
   try { new RegExp(p, "iu"); check("규칙", `정규식 컴파일 ${p.slice(0, 20)}`, true, true); }
   catch (e) { check("규칙", `정규식 컴파일 ${p}`, String(e), "ok"); }
@@ -33,13 +34,14 @@ const unit: [string, string][] = [
   ["정리본_진짜", "정리본진짜"], ["자료_123", "자료123"], ["최종", "최종"],
   ["보고서 - 복사본 (2)", "보고서"], ["자료 copy", "자료"], ["자료_1", "자료"], ["발표_찐최종", "발표"],
   ["보고서_20261120", "보고서"], ["보고서_v2_1120_1", "보고서"],
+  ["발표자료_수정본", "발표자료"], ["발표자료_최종본", "발표자료"], ["발표자료 진짜최종본", "발표자료"], ["발표자료_최종_수정본", "발표자료"], // D-26
 ];
 for (const [i, w] of unit) check("단위", i, base(i), w);
 check("단위", "server3 (확인 필요 항목, 지금 값 server3)", base("server3"), "server3");
 check("단위", "v2 → 다 지워지면 원래 이름", base("v2"), "v2");
 check("단위", "(1) → 다 지워지면 원래 이름", base("(1)"), "(1)");
-// 확인 필요 후보: 한국 팀플에서 흔한 '수정본'·'최종본'·v1.2
-for (const [i, w] of [["발표자료_수정본", "발표자료"], ["발표자료_최종본", "발표자료"], ["보고서_v1.2", "보고서"]] as const) {
+// 확인 필요 후보: 소수 버전 v1.2
+for (const [i, w] of [["보고서_v1.2", "보고서"]] as const) {
   const g = base(i);
   if (g !== w) ask("단위", i, `기본 이름 '${g}' → '발표자료'/'보고서'와 다른 그룹이 됨. CLAUDE.md에 규칙 없음`);
   else check("단위", i, g, w);

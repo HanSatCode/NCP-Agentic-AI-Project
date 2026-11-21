@@ -1,12 +1,19 @@
 {
   "keywords": [
+    { "word": "진짜최종본", "score": 40 },
     { "word": "진짜최종", "score": 40 },
+    { "word": "찐최종본", "score": 40 },
     { "word": "찐최종", "score": 40 },
+    { "word": "최종수정본", "score": 30 },
     { "word": "최종수정", "score": 30 },
+    { "word": "최종본", "score": 20 },
     { "word": "최종", "score": 20 },
     { "word": "final", "score": 20 },
+    { "word": "완성본", "score": 20 },
     { "word": "완성", "score": 20 },
+    { "word": "제출본", "score": 20 },
     { "word": "제출", "score": 20 },
+    { "word": "수정본", "score": 10 },
     { "word": "수정", "score": 10 }
   ],
   "copyMarks": [
