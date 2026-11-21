@@ -2,12 +2,15 @@
    파일 버전 정리 — 미니멀 · 신뢰감
    - 바탕은 흰색/아주 옅은 회색, 글자는 남색빛 검정(ink)
    - 상자는 1px 옅은 테두리 + 아주 약한 그림자 (또렷하고 정돈된 느낌)
-   - 색은 뜻이 있을 때만: 남색 = 주 버튼·지금 단계 / 파랑 = 바뀌는 것 / 초록 = 완료·추천·안전
+   - 브랜드 컬러는 파랑(--brand, 로고의 "fit"과 같은 색): 주 버튼·지금 단계·선택·강조
+   - 그 밖의 색은 뜻이 있을 때만: 초록 = 완료·추천·안전
      노랑 = 확인 필요 / 회색 = 빠진 것 / 빨강 = 오류
    - 보조 글자도 흰 바탕 대비 4.5:1 이상
    ===================================================================== */
 
 :root {
+  /* 화면 가장자리 여백. 본문과 하단바가 같이 씀 */
+  --gutter: 48px;
   --bg: #f6f7f9;
   --surface: #ffffff;
   --surface-2: #f8f9fb;
@@ -21,9 +24,12 @@
   --muted: #5d6474;
   --faint: #9aa1ad;
 
-  --primary: #0f1729;
-  --primary-hover: #26314a;
-  --accent: #2554d8;
+  /* 브랜드 컬러 (흰 바탕과 대비 6.3:1, 파랑 위 흰 글자도 같음) */
+  --brand: #2554d8;
+  --brand-hover: #1d44b5;
+  --primary: var(--brand);
+  --primary-hover: var(--brand-hover);
+  --accent: var(--brand);
   --accent-bg: #edf2ff;
   --ring: rgba(37, 84, 216, 0.28);
 
@@ -67,7 +73,7 @@ body {
 /* 화면 폭 전체 사용 (가운데 고정 폭 없음) */
 main {
   margin: 0 auto;
-  padding: 20px 24px 120px;
+  padding: 20px var(--gutter) 120px;
 }
 .app {
   display: flex;
@@ -193,8 +199,8 @@ input {
   border-color: var(--border-strong);
 }
 .stepper-item.current {
-  border-color: var(--ink);
-  background: var(--ink);
+  border-color: var(--brand);
+  background: var(--brand);
 }
 .stepper-num {
   flex: none;
@@ -211,7 +217,7 @@ input {
 }
 .stepper-item.current .stepper-num {
   background: #fff;
-  color: var(--ink);
+  color: var(--brand);
 }
 .stepper-item.done .stepper-num {
   background: var(--green);
@@ -236,7 +242,7 @@ input {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  padding: 24px 28px;
+  padding: 28px 36px;
 }
 .section-head {
   display: flex;
@@ -333,12 +339,17 @@ input {
   border-color: var(--faint);
   color: var(--ink);
 }
+/* 주 버튼: 단계마다 하나, 크게 */
 .btn.primary {
-  min-width: 156px;
+  min-width: 220px;
+  height: 52px;
+  padding: 0 28px;
+  font-size: 16px;
+  font-weight: 700;
   border-color: var(--primary);
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(15, 23, 41, 0.18);
+  box-shadow: 0 4px 14px rgba(37, 84, 216, 0.28);
 }
 .btn.primary:hover:not(:disabled) {
   background: var(--primary-hover);
@@ -597,7 +608,7 @@ label.file-row:hover {
   width: 16px;
   height: 16px;
   margin: 0;
-  accent-color: var(--ink);
+  accent-color: var(--brand);
 }
 .file-row.is-dup {
   cursor: default;
@@ -711,8 +722,8 @@ label.file-row:hover {
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .open-btn:hover {
-  border-color: var(--ink);
-  background: var(--ink);
+  border-color: var(--brand);
+  background: var(--brand);
   color: #fff;
 }
 
@@ -828,26 +839,19 @@ label.file-row:hover {
 }
 .scope label:has(input:checked) {
   background: var(--surface);
-  color: var(--ink);
+  color: var(--brand);
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
 }
 .scope label:has(input:focus-visible) {
   outline: 3px solid var(--ring);
 }
 
-/* ---------- 바닥글 ---------- */
-.footer {
-  padding: 4px 2px;
-  font-size: 12.5px;
-  color: var(--muted);
-  text-align: center;
-}
 
 /* ---------- 안내 메시지 ---------- */
 .toasts {
   position: fixed;
   left: 50%;
-  bottom: 28px;
+  bottom: calc(var(--bar-h, 80px) + 16px);
   z-index: 30;
   display: flex;
   flex-direction: column;
@@ -1019,13 +1023,22 @@ label.file-row:hover {
   }
 }
 
+@media (max-width: 1100px) {
+  :root {
+    --gutter: 32px;
+  }
+}
+
 /* ---------- 태블릿 ---------- */
 @media (max-width: 860px) {
+  :root {
+    --gutter: 24px;
+  }
   main {
-    padding: 28px 20px 120px;
+    padding: 24px var(--gutter) 120px;
   }
   .panel {
-    padding: 26px 24px;
+    padding: 26px 28px;
   }
   .cards {
     grid-template-columns: 1fr;
@@ -1034,8 +1047,11 @@ label.file-row:hover {
 
 /* ---------- 폰 (480px 이하): 카드 한 줄에 하나, 파일 목록은 파일명·수정 날짜만 ---------- */
 @media (max-width: 480px) {
+  :root {
+    --gutter: 16px;
+  }
   main {
-    padding: 20px 12px 120px;
+    padding: 18px var(--gutter) 120px;
   }
   h2 {
     font-size: 19px;
@@ -1047,7 +1063,7 @@ label.file-row:hover {
     font-size: 30px;
   }
   .panel {
-    padding: 22px 16px;
+    padding: 22px 18px;
     border-radius: var(--radius);
   }
   .trust {
@@ -1064,6 +1080,7 @@ label.file-row:hover {
     padding: 8px 6px;
   }
   .files .col-size,
+  .files .col-meta,
   .files .col-remove {
     display: none;
   }
@@ -1106,7 +1123,8 @@ main {
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
-  padding-bottom: 16px;
+  /* 아래 고정 하단바 높이만큼 비움 (--bar-h는 화면 코드가 잼) */
+  padding-bottom: calc(var(--bar-h, 80px) + 16px);
 }
 .app {
   flex: 1;
@@ -1132,9 +1150,11 @@ main {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(280px, 26vw, 380px);
+  /* 두 상태 모두 fr로 적어야 칸 폭이 애니메이션으로 바뀜 */
+  grid-template-columns: minmax(0, 2.6fr) minmax(280px, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  gap: 20px;
+  column-gap: 20px;
+  transition: grid-template-columns 0.55s var(--ease-out), column-gap 0.55s var(--ease-out);
   margin-top: 18px;
 }
 .actions {
@@ -1146,6 +1166,21 @@ main {
 }
 .files th {
   white-space: nowrap;
+}
+/* 칸이 많아 좁아지면 파일명은 이 폭을 지키고 표를 옆으로 스크롤 */
+@media (min-width: 481px) {
+  .files td.name {
+    min-width: 220px;
+  }
+}
+/* 스크롤은 되지만 스크롤 막대는 숨김 (마우스 휠·터치·트랙패드로 움직임) */
+.table-wrap,
+.panel-body {
+  scrollbar-width: none;
+}
+.table-wrap::-webkit-scrollbar,
+.panel-body::-webkit-scrollbar {
+  display: none;
 }
 .upload-list {
   display: flex;
@@ -1164,14 +1199,15 @@ main {
   top: 0;
   z-index: 1;
 }
-.list-empty {
-  flex: 1;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 14px;
-  color: var(--muted);
+.upload-grid.is-empty {
+  grid-template-columns: minmax(0, 0fr) minmax(280px, 1fr);
+  column-gap: 0px;
+}
+/* 펼쳐지는 동안 내용이 넘치지 않게. 여백은 포커스 테두리가 잘리지 않게 */
+.upload-list {
+  overflow: hidden;
+  margin: -4px;
+  padding: 4px;
 }
 /* 오른쪽 칸: 드롭 영역이 늘어나고 [예시 파일로 해보기]는 바로 아래 */
 .upload-side {
@@ -1185,10 +1221,11 @@ main {
   margin-top: 0;
   justify-content: center;
 }
-.sample-btn {
+.upload-side .btn {
   flex: none;
   width: 100%;
 }
+
 .drop-icon,
 .table-head .btn {
   flex: none;
@@ -1203,18 +1240,17 @@ main {
   .panel-body {
     overflow: visible;
   }
-  .upload-grid {
+  .upload-grid,
+  .upload-grid.is-empty {
     grid-template-columns: 1fr;
     grid-template-rows: none;
+    gap: 16px;
   }
   .upload-side {
     order: -1;
   }
   .upload-grid .dropzone {
     min-height: 200px;
-  }
-  .list-empty {
-    display: none;
   }
 }
 
@@ -1237,4 +1273,256 @@ main {
 /* 서비스 이름의 "fit"만 파랑 (로고 마크의 파란 종이와 같은 색) */
 .wordmark-fit {
   color: var(--accent);
+}
+
+/* =====================================================================
+   애니메이션: 짧고 부드럽게, 뜻이 있는 곳에만
+   - 단계 화면이 바뀔 때 살짝 떠오름, 목록·카드는 위에서부터 차례로
+   - 누르면 살짝 눌림, 끌어다 놓는 동안 업로드 아이콘이 떠오름
+   - 시스템의 "동작 줄이기"를 켜면 모두 끔
+   ===================================================================== */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 단계 화면 전환. backwards: 끝난 뒤에는 값을 붙잡지 않아야 흐려짐(transition)이 부드럽게 동작 */
+.panel {
+  animation: rise-in 0.45s var(--ease-out) backwards;
+}
+/* 카드·표 행: --i 순서대로 (10번째 이후는 같이) */
+.card,
+.files tbody tr,
+.preview tbody tr {
+  animation: rise-in 0.4s var(--ease-out) backwards;
+  animation-delay: calc(min(var(--i, 0), 10) * 35ms + 80ms);
+}
+.badge {
+  animation: pop-in 0.3s var(--ease-out) both;
+}
+.toast {
+  animation: rise-in 0.35s var(--ease-out);
+}
+.viewer {
+  animation: rise-in 0.35s var(--ease-out);
+}
+
+/* 누름·바뀜 */
+.btn,
+.stepper-item,
+.open-btn,
+.remove,
+.sample-btn {
+  /* 비활성 ↔ 활성(opacity)도 천천히 */
+  transition: background 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.4s, opacity 0.4s var(--ease-out),
+    transform 0.15s var(--ease-out);
+}
+.btn:active:not(:disabled),
+.stepper-item:active:not(:disabled),
+.open-btn:active,
+.remove:active {
+  transform: scale(0.96);
+}
+.stepper-num,
+.stepper-label {
+  transition: background 0.3s, color 0.3s;
+}
+.file-row {
+  transition: background 0.2s;
+}
+
+/* 드롭 영역: 올리거나 끄는 동안 아이콘이 떠오름 */
+.drop-icon {
+  transition: transform 0.35s var(--ease-out), box-shadow 0.35s;
+}
+.dropzone:hover .drop-icon {
+  transform: translateY(-3px);
+}
+.dropzone.drag .drop-icon {
+  transform: translateY(-6px) scale(1.08);
+  box-shadow: var(--shadow);
+}
+
+/* 분석 중: 버튼 안에 도는 표시 */
+.btn[aria-busy="true"]::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* 아래에 더 있음 표시 (스크롤 막대 대신). 아래쪽을 흐리게 하고 화살표가 통통 튐 */
+.scroll-area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.scroll-area.grow {
+  flex: 1;
+}
+.scroll-area::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  height: 64px;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--surface) 85%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.scroll-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  box-shadow: var(--shadow);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 8px);
+  transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out), visibility 0.3s, color 0.2s, border-color 0.2s;
+}
+.scroll-hint:hover {
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+.scroll-hint svg {
+  color: var(--accent);
+  animation: nudge 1.4s ease-in-out infinite;
+}
+.scroll-area.has-more::after {
+  opacity: 1;
+}
+.scroll-area.has-more:not(.scrolled) .scroll-hint {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+@keyframes nudge {
+  0%,
+  100% {
+    transform: translateY(-1px);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+/* 폰은 페이지가 스크롤되므로 표시하지 않음 */
+@media (max-width: 860px) {
+  .scroll-area::after,
+  .scroll-hint {
+    display: none;
+  }
+}
+
+/* 하단바: 단계마다 버튼을 화면 아래에 고정. 뒤 내용이 살짝 비치게 */
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  padding: 14px var(--gutter) calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 -4px 16px rgba(16, 24, 40, 0.04);
+  animation: rise-in 0.45s var(--ease-out) both;
+}
+.bottom-bar .actions {
+  margin: 0;
+  min-height: 52px;
+}
+.bottom-bar .hint {
+  margin: 0;
+}
+@media (max-width: 480px) {
+  .bottom-bar {
+    padding: 10px var(--gutter) calc(10px + env(safe-area-inset-bottom));
+  }
+}
+
+/* 다음으로 가는 버튼의 화살표: 마우스를 올리면 앞으로 살짝 */
+.btn-arrow {
+  transition: transform 0.25s var(--ease-out);
+}
+.btn:hover:not(:disabled) .btn-arrow {
+  transform: translateX(3px);
+}
+
+/* [분석하기] 버튼 안의 분석 중 → 완료. 그동안 업로드 화면은 흐리게 하고 못 만짐(inert) */
+.btn.primary[aria-busy="true"],
+.btn.primary.is-done {
+  opacity: 1;
+  cursor: progress;
+}
+.btn.primary.is-done {
+  border-color: var(--green);
+  background: var(--green);
+  box-shadow: 0 4px 14px rgba(22, 121, 74, 0.28);
+  animation: pop-in 0.35s var(--ease-out);
+}
+/* 체크 표시를 그리듯이 */
+.btn-check path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: draw 0.4s 0.1s var(--ease-out) forwards;
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.panel,
+.stepper {
+  transition: opacity 0.5s var(--ease-out), filter 0.5s var(--ease-out);
+}
+.panel[inert],
+.stepper[inert] {
+  opacity: 0.5;
+  filter: saturate(0.4);
 }

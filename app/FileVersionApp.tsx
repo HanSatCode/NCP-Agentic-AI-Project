@@ -14,14 +14,15 @@ import { analyze, decidingCriterion, type Analysis, type FileResult, type Group 
 import { rename, type RenameRow, type Scope } from "@/src/analysis/rename.ts";
 import { acceptFiles, loadSamples, toInputFiles } from "@/src/analysis/upload.ts";
 import { makeDownload } from "@/src/analysis/zip.ts";
+import { readDocMeta, type DocMeta } from "@/src/analysis/metadata.ts";
 import type { InputFile } from "@/src/analysis/types.ts";
 
 type Badge = "최신 후보" | "확인 필요" | "중복" | "직접 선택";
-type Item = { input: InputFile; file: File }; // 분석 입력 + 원본 File (미리보기용)
+type Item = { input: InputFile; file: File; meta: DocMeta }; // 분석 입력 + 원본 File (미리보기용) + 문서 안 기록 (표시만, D-30)
 
 // 안내 메시지 (명세서 4-5, 문구 그대로)
 const MSG = {
-  M01: "파일을 여기에 끌어다 놓거나 [파일 선택]을 눌러 주세요",
+  M01: "파일을 여기에 끌어다 놓거나 눌러서 골라 주세요", // D-31
   M02: "비교하려면 파일이 2개 이상 필요해요",
   M03: (name: string) => `'${name}'은 20MB가 넘어서 빼고 올렸어요`,
   M04: "이미 올린 파일이에요",
@@ -31,7 +32,7 @@ const MSG = {
   M08: (n: number) => `파일 ${n}개를 내려받았어요`,
 };
 
-type SortKey = "name" | "date" | "size";
+type SortKey = "name" | "date" | "created" | "saved" | "revision" | "size";
 type Toast = { id: number; text: string; kind: "info" | "warn" | "done" };
 
 function formatDate(ts: number) {
@@ -55,6 +56,11 @@ function saveBlob(blob: Blob, name: string) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** 목록이 차례로 나타나게 하는 순번 (globals.css의 --i) */
+function stagger(i: number) {
+  return { "--i": i } as React.CSSProperties;
 }
 
 const BADGE_CLASS: Record<Badge, string> = {
@@ -100,6 +106,48 @@ function SectionHead({ title, desc, id, aside }: { title: string; desc: string; 
   );
 }
 
+/** 스크롤 막대를 숨긴 대신, 아래에 내용이 더 있으면 아래쪽 흐림 + "아래에 더 있어요"를 띄운다. 누르면 한 화면 내려감
+ *  한 번 내려 보면 스크롤할 수 있다는 걸 안 것이므로 알약은 다시 띄우지 않는다 (흐림만 남김) */
+function Scrollable({ className, grow, children }: { className: string; grow?: boolean; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const el = ref.current!;
+    const update = () => {
+      setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+      if (el.scrollTop > 0) setScrolled(true);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    // 창 크기·행 추가·카드 펼침으로 높이가 바뀌어도 다시 계산
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    for (const child of Array.from(el.children)) ro.observe(child);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+  return (
+    <div className={`scroll-area ${grow ? "grow" : ""} ${more ? "has-more" : ""} ${scrolled ? "scrolled" : ""}`}>
+      <div ref={ref} className={className}>
+        {children}
+      </div>
+      <button
+        type="button"
+        className="scroll-hint"
+        onClick={() => ref.current?.scrollBy({ top: ref.current.clientHeight * 0.8, behavior: "smooth" })}
+      >
+        아래에 더 있어요
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 /** 파일 행의 [열기] 버튼. 행 전체가 라디오 label이라 눌러도 최신 파일 선택이 바뀌지 않게 막는다 */
 function OpenButton({ name, onOpen }: { name: string; onOpen: () => void }) {
   return (
@@ -131,6 +179,9 @@ export default function FileVersionApp() {
 
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  // [분석하기]를 눌렀을 때 버튼 안에서: 분석 중(1초) → "분석이 완료되었어요!" → STEP 2로. 그동안 업로드 화면은 못 만짐
+  const [overlay, setOverlay] = useState<null | "loading" | "done">(null);
+  const busy = overlay !== null;
   // 그룹 key → 사용자가 직접 고른 최신 파일 id (F-02-05)
   const [selected, setSelected] = useState<Record<string, string | undefined>>({});
   // 파일이 4개 이상인 그룹 카드를 펼쳤는지
@@ -152,6 +203,14 @@ export default function FileVersionApp() {
   const [view, setView] = useState<1 | 2 | 3>(1);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  // 하단바 높이만큼 본문 아래를 비워 둠 (폰에서 버튼이 여러 줄이 되면 높이가 바뀜)
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bar = barRef.current!;
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty("--bar-h", `${bar.offsetHeight}px`));
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, []);
   const runSeq = useRef(0);
 
   const step = view;
@@ -180,8 +239,11 @@ export default function FileVersionApp() {
       return;
     }
     const seq = ++runSeq.current;
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
     setAnalyzing(true);
-    await new Promise((r) => setTimeout(r, 300)); // "분석 중..." 상태가 잠깐 보이게
+    if (goNext) setOverlay("loading");
+    // 분석은 금방 끝나지만, 눌렀을 때는 1초 동안 "분석 중"을 보여 줘서 무언가 했다는 느낌을 줌. 목록만 바뀐 다시 계산은 짧게
+    await wait(goNext ? 1000 : 300);
     if (seq !== runSeq.current) return; // 그 사이 목록이 또 바뀜
     const result = analyze(
       list.map((x) => x.input),
@@ -191,11 +253,18 @@ export default function FileVersionApp() {
     setExpanded({});
     setAnalysis(result);
     setAnalyzing(false);
-    if (goNext) setView(2);
+    if (goNext) {
+      setOverlay("done");
+      await wait(900);
+      if (seq !== runSeq.current) return;
+      setOverlay(null);
+      setView(2);
+    }
   }
 
   function resetResults() {
     runSeq.current++;
+    setOverlay(null);
     setView(1);
     setAnalysis(null);
     setAnalyzing(false);
@@ -226,7 +295,7 @@ export default function FileVersionApp() {
     if (!accepted.length) return;
     // 한 번에 올린 파일은 같은 batch (D-04: 중복 배지를 어느 쪽에 붙일지 정할 때 씀)
     const inputs = await toInputFiles(accepted, current.length, ++batchRef.current);
-    const added = inputs.map((input, i) => ({ input, file: accepted[i] }));
+    const added = inputs.map((input, i) => ({ input, file: accepted[i], meta: readDocMeta(input.name, input.bytes!) }));
     updateItems([...itemsRef.current, ...added]);
   }
 
@@ -286,8 +355,9 @@ export default function FileVersionApp() {
     const dir = sort.asc ? 1 : -1;
     return [...items].sort((a, b) => {
       if (sort.key === "name") return a.file.name.localeCompare(b.file.name, "ko") * dir;
-      if (sort.key === "date") return (a.file.lastModified - b.file.lastModified) * dir;
-      return (a.file.size - b.file.size) * dir;
+      const num = (x: Item) =>
+        sort.key === "date" ? x.file.lastModified : sort.key === "size" ? x.file.size : (x.meta[sort.key as keyof DocMeta] ?? 0);
+      return (num(a) - num(b)) * dir;
     });
   })();
 
@@ -298,6 +368,17 @@ export default function FileVersionApp() {
   function ariaSort(key: SortKey) {
     if (sort?.key !== key) return "none" as const;
     return sort.asc ? ("ascending" as const) : ("descending" as const);
+  }
+
+  // 열 제목: 누르면 정렬. title은 마우스를 올리면 보이는 설명
+  function sortTh(key: SortKey, label: string, className = "", title?: string) {
+    return (
+      <th aria-sort={ariaSort(key)} className={className}>
+        <button type="button" className="th-btn" title={title} onClick={() => toggleSort(key)}>
+          {label} <span aria-hidden>{sortMark(key)}</span>
+        </button>
+      </th>
+    );
   }
 
   function sortMark(key: SortKey) {
@@ -382,7 +463,7 @@ export default function FileVersionApp() {
             File<span className="wordmark-fit">fit</span>
           </span>
         </h1>
-        <nav className="stepper" aria-label="진행 단계">
+        <nav className="stepper" aria-label="진행 단계" inert={busy}>
           {steps.map((s) => {
             const state = step === s.n ? "current" : s.n < step ? "done" : "todo";
             return (
@@ -413,7 +494,7 @@ export default function FileVersionApp() {
 
       {/* S-02 STEP 1 파일 업로드 */}
       {view === 1 && (
-      <section className="panel" aria-labelledby="s02-title">
+      <section className="panel" aria-labelledby="s02-title" inert={busy}>
         <SectionHead
           id="s02-title"
           title="파일 업로드"
@@ -421,11 +502,10 @@ export default function FileVersionApp() {
         />
 
         {/* 왼쪽 = 파일 목록, 오른쪽 = 업로드 영역 (폰에서는 업로드 영역이 위) */}
-        <div className="upload-grid">
+        {/* 파일이 없으면 업로드 영역이 폭 전체, 파일이 생기면 왼쪽에 목록이 펼쳐짐 */}
+        <div className={`upload-grid ${items.length === 0 ? "is-empty" : ""}`}>
         <div className="upload-list">
-          {items.length === 0 ? (
-            <div className="list-empty">올린 파일이 여기에 표시돼요</div>
-          ) : (
+          {items.length > 0 && (
             <>
               <div className="table-head">
                 <span className="count">파일 {items.length}개</span>
@@ -433,33 +513,24 @@ export default function FileVersionApp() {
                   모두 지우기
                 </button>
               </div>
-              <div className="table-wrap">
+              <Scrollable className="table-wrap">
                 <table className="files">
                   <thead>
                     <tr>
-                      <th aria-sort={ariaSort("name")}>
-                        <button type="button" className="th-btn" onClick={() => toggleSort("name")}>
-                          파일명 <span aria-hidden>{sortMark("name")}</span>
-                        </button>
-                      </th>
-                      <th aria-sort={ariaSort("date")}>
-                        <button type="button" className="th-btn" onClick={() => toggleSort("date")}>
-                          수정 날짜 <span aria-hidden>{sortMark("date")}</span>
-                        </button>
-                      </th>
-                      <th aria-sort={ariaSort("size")} className="col-size">
-                        <button type="button" className="th-btn" onClick={() => toggleSort("size")}>
-                          크기 <span aria-hidden>{sortMark("size")}</span>
-                        </button>
-                      </th>
+                      {sortTh("name", "파일명")}
+                      {sortTh("date", "수정 날짜", "", "파일 속성의 수정 날짜. 카톡에서 받으면 받은 시각일 수 있어요")}
+                      {sortTh("created", "만든 시각", "col-meta", "문서 안에 적힌 처음 만든 시각 (docx·pptx·xlsx)")}
+                      {sortTh("saved", "저장 시각", "col-meta", "문서 안에 적힌 마지막 저장 시각 (docx·pptx·xlsx)")}
+                      {sortTh("revision", "저장 횟수", "col-meta", "문서 안에 적힌 저장 횟수 (docx·pptx·xlsx)")}
+                      {sortTh("size", "크기", "col-size")}
                       <th className="col-remove">
                         <span className="sr-only">빼기</span>
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedItems.map((x) => (
-                      <tr key={x.input.id}>
+                    {sortedItems.map((x, i) => (
+                      <tr key={x.input.id} style={stagger(i)}>
                         <td className="name">
                           <span className="name-cell">
                             <FileTypeIcon name={x.file.name} />
@@ -467,6 +538,9 @@ export default function FileVersionApp() {
                           </span>
                         </td>
                         <td className="nowrap">{formatDate(x.file.lastModified)}</td>
+                        <td className="nowrap col-meta">{x.meta.created ? formatDate(x.meta.created) : "—"}</td>
+                        <td className="nowrap col-meta">{x.meta.saved ? formatDate(x.meta.saved) : "—"}</td>
+                        <td className="nowrap col-meta">{x.meta.revision ? `${x.meta.revision}회` : "—"}</td>
                         <td className="nowrap col-size">{formatSize(x.file.size)}</td>
                         <td className="col-remove">
                           <button
@@ -482,7 +556,7 @@ export default function FileVersionApp() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </Scrollable>
             </>
           )}
         </div>
@@ -541,23 +615,6 @@ export default function FileVersionApp() {
           }}
         />
 
-        <div className="actions">
-          <span className="spacer" />
-          <button
-            type="button"
-            className="btn primary"
-            disabled={items.length < 2 || analyzing}
-            onClick={() => runAnalysis(items, true)}
-          >
-            {analyzing ? "분석 중..." : "분석하기"}
-          </button>
-          {analysis && !analyzing && (
-            <button type="button" className="btn" onClick={() => setView(2)}>
-              분석 결과 보기 →
-            </button>
-          )}
-        </div>
-        {items.length === 1 && <p className="hint warn">{MSG.M02}</p>}
       </section>
       )}
 
@@ -595,14 +652,14 @@ export default function FileVersionApp() {
             }
           />
 
-          <div className="panel-body">
+          <Scrollable className="panel-body" grow>
           <div className="cards">
-            {analysis.groups.map((g) => {
+            {analysis.groups.map((g, gi) => {
               // 4개 이상이면 위 2개 + "… N개 더" (누르면 펼침)
               const collapsed = g.files.length >= 4 && !expanded[g.key];
               const shown = collapsed ? g.files.slice(0, 2) : g.files;
               return (
-              <div className="card" key={g.key}>
+              <div className="card" key={g.key} style={stagger(gi)}>
                 <div className="card-head">
                   <FileTypeIcon name={g.files[0].name} />
                   <h3>
@@ -661,7 +718,7 @@ export default function FileVersionApp() {
             })}
 
             {analysis.singles.length > 0 && (
-              <div className="card singles">
+              <div className="card singles" style={stagger(analysis.groups.length)}>
                 <div className="card-head">
                   <h3>단독 파일</h3>
                   <span className="card-count">{analysis.singles.length}개</span>
@@ -684,17 +741,8 @@ export default function FileVersionApp() {
               </div>
             )}
           </div>
-          </div>
+          </Scrollable>
 
-          <div className="actions">
-            <button type="button" className="btn" onClick={() => setView(1)}>
-              ← 이전: 파일 업로드
-            </button>
-            <span className="spacer" />
-            <button type="button" className="btn primary" onClick={goRename} disabled={analyzing}>
-              다음: 이름 바꾸기
-            </button>
-          </div>
         </section>
       )}
 
@@ -707,7 +755,7 @@ export default function FileVersionApp() {
             desc="새 이름 규칙은 기본이름_v번호_수정날짜예요. 그룹의 기본 이름은 직접 고칠 수 있어요."
           />
 
-          <div className="panel-body">
+          <Scrollable className="panel-body" grow>
           <div className="base-inputs">
             {analysis.groups.map((g) => {
               const value = drafts[g.key] ?? bases[g.key] ?? g.baseName;
@@ -741,11 +789,11 @@ export default function FileVersionApp() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => {
+                {rows.map((r, i) => {
                   const off = r.duplicate || !r.to;
                   const inc = r.download && !!r.to;
                   return (
-                    <tr key={r.id} className={off ? "excluded" : inc ? "" : "skipped"}>
+                    <tr key={r.id} style={stagger(i)} className={off ? "excluded" : inc ? "" : "skipped"}>
                       <td className="name">
                         <span className="name-cell">
                           <FileTypeIcon name={r.from} />
@@ -765,38 +813,91 @@ export default function FileVersionApp() {
               </tbody>
             </table>
           </div>
-          </div>
+          </Scrollable>
 
-          <div className="actions">
-            <fieldset className="scope">
-              <legend className="sr-only">내려받을 범위</legend>
-              <label>
-                <input type="radio" name="scope" checked={scope === "latest"} onChange={() => setScope("latest")} />
-                최신 파일만
-              </label>
-              <label>
-                <input type="radio" name="scope" checked={scope === "all"} onChange={() => setScope("all")} />
-                전체 버전
-              </label>
-            </fieldset>
-            <span className="spacer" />
-            <button type="button" className="btn" onClick={() => setView(2)}>
-              ← 이전: 분석 결과
-            </button>
-            <button type="button" className="btn" onClick={restart}>
-              처음부터 다시
-            </button>
-            <button type="button" className="btn primary" disabled={included.length === 0} onClick={download}>
-              내려받기 ({included.length}개)
-            </button>
-          </div>
           <p className="hint small">원본 파일은 바뀌지 않아요. 새 이름의 사본만 내려받아요.</p>
         </section>
       )}
 
-      <footer className="footer">
-        추천은 파일명 → 수정 날짜 순서로 판단한 후보예요. 최종 선택은 직접 확인해 주세요.
-      </footer>
+
+      {/* 하단바: 단계마다 버튼을 화면 아래에 고정 */}
+      <div className="bottom-bar" ref={barRef}>
+        <div className="actions">
+          {view === 1 && (
+            <>
+              {items.length === 1 && <p className="hint warn">{MSG.M02}</p>}
+              <span className="spacer" />
+              {analysis && !analyzing && !busy && (
+                <button type="button" className="btn" onClick={() => setView(2)}>
+                  분석 결과 보기 →
+                </button>
+              )}
+              <button
+                type="button"
+                className={`btn primary ${overlay === "done" ? "is-done" : ""}`}
+                disabled={items.length < 2 || analyzing || busy}
+                aria-busy={analyzing}
+                onClick={() => runAnalysis(items, true)}
+              >
+                {overlay === "done" ? (
+                  <>
+                    <svg className="btn-check" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M5 12.5l4.5 4.5L19 7.5" />
+                    </svg>
+                    분석이 완료되었어요!
+                  </>
+                ) : analyzing ? (
+                  "분석 중..."
+                ) : (
+                  <>
+                    분석하기
+                    <svg className="btn-arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M5 12h14" />
+                      <path d="M13 6l6 6-6 6" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </>
+          )}
+          {view === 2 && analysis && (
+            <>
+              <button type="button" className="btn" onClick={() => setView(1)}>
+                ← 이전: 파일 업로드
+              </button>
+              <span className="spacer" />
+              <button type="button" className="btn primary" onClick={goRename} disabled={analyzing}>
+                다음: 이름 바꾸기
+              </button>
+            </>
+          )}
+          {view === 3 && analysis && showRename && (
+            <>
+              <fieldset className="scope">
+                <legend className="sr-only">내려받을 범위</legend>
+                <label>
+                  <input type="radio" name="scope" checked={scope === "latest"} onChange={() => setScope("latest")} />
+                  최신 파일만
+                </label>
+                <label>
+                  <input type="radio" name="scope" checked={scope === "all"} onChange={() => setScope("all")} />
+                  전체 버전
+                </label>
+              </fieldset>
+              <span className="spacer" />
+              <button type="button" className="btn" onClick={() => setView(2)}>
+                ← 이전: 분석 결과
+              </button>
+              <button type="button" className="btn" onClick={restart}>
+                처음부터 다시
+              </button>
+              <button type="button" className="btn primary" disabled={included.length === 0} onClick={download}>
+                내려받기 ({included.length}개)
+              </button>
+            </>
+          )}
+        </div>
+      </div>
 
       {previewFile && <FilePreview file={previewFile} onClose={closePreview} />}
 
