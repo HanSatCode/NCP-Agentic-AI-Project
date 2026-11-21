@@ -85,10 +85,8 @@ export function reasonText(by: Group["decidedBy"], top: FileResult): string {
 }
 
 function makeGroup(key: string, files: FileResult[]): Group {
-  const nonDup = files.filter((f) => !f.duplicateOf);
-  // shortcut: 그룹 안 파일이 모두 다른 그룹 파일의 중복이면 중복까지 넣어 순위를 매김. 실제로 생기면 문구를 따로 정한다
-  const candidates = rank(nonDup.length ? nonDup : files);
-  const dups = nonDup.length ? files.filter((f) => f.duplicateOf) : [];
+  const candidates = rank(files.filter((f) => !f.duplicateOf)); // 호출하는 쪽이 1개 이상을 보장
+  const dups = files.filter((f) => f.duplicateOf);
   const [top, second] = candidates;
   const by: Group["decidedBy"] = second ? (decidingCriterion(top, second) ?? "tie") : "only";
   return {
@@ -119,9 +117,11 @@ export function analyze(input: InputFile[], rules: Rules): Analysis {
   const groups: Group[] = [];
   const singles: FileResult[] = [];
   for (const [key, list] of byKey) {
-    if (list.length === 1) singles.push(list[0]);
+    // 중복을 빼면 남는 파일이 없는 그룹은 비교할 후보가 없어 단독 파일 카드에 "중복"으로만 둔다 (F-03-03: 중복은 항상 제외)
+    if (list.length === 1 || list.every((f) => f.duplicateOf)) singles.push(...list);
     else groups.push(makeGroup(key, list));
   }
+  singles.sort((a, b) => a.order - b.order);
   const firstOrder = (g: Group) => Math.min(...g.files.map((f) => f.order));
   groups.sort((a, b) => b.files.length - a.files.length || firstOrder(a) - firstOrder(b)); // 같은 수면 목록에 먼저 나온 그룹부터
 

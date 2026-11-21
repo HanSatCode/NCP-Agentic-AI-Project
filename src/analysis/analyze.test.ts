@@ -99,3 +99,10 @@ test("같은 파일 수면 목록에 먼저 나온 그룹부터", () => {
   const r = run([["나_v1.txt", "11-01"], ["가_v1.txt", "11-01"], ["가_v2.txt", "11-01"], ["나_v2.txt", "11-01"]]);
   assert.deepEqual(r.groups.map((g) => g.baseName), ["나", "가"]);
 });
+
+test("그룹 파일이 모두 다른 그룹의 중복이면 그룹을 만들지 않고 단독 파일 카드에 중복으로 둠 (F-03-03)", () => {
+  const r = run([["A.pptx", "11-01", "X"], ["B.pptx", "11-01", "Y"], ["발표자료_최종.pptx", "11-02", "X"], ["발표자료_진짜최종.pptx", "11-03", "Y"]]);
+  assert.equal(r.groups.length, 0);
+  assert.deepEqual(r.singles.map((f) => [f.name, !!f.duplicateOf]), [["A.pptx", false], ["B.pptx", false], ["발표자료_최종.pptx", true], ["발표자료_진짜최종.pptx", true]]);
+  assert.equal(r.summary, "그룹 0개 · 단독 4개 · 중복 2개");
+});

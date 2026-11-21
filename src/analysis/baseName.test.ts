@@ -84,5 +84,6 @@ test("빈 이름·확장자 없음", () => {
   assert.equal(r.keyword?.score, 20);
   assert.equal(p("README").ext, "");
   assert.equal(p(".env").ext, "");
-  assert.equal(p("copy.txt").baseName, "copy"); // 이름 전체가 복사본 표시면 지우지 않음
+  assert.equal(p("copy.txt").baseName, "copy"); // 이름 전체가 복사본 표시면 다 지워져서 원래 이름
+  assert.equal(p("(1).docx").baseName, "(1)");
 });

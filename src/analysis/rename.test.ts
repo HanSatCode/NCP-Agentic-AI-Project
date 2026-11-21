@@ -106,3 +106,9 @@ test("확장자 없는 파일", () => {
     README_v2: "README_v2_20261121",
   });
 });
+
+test("중복만 남은 그룹은 내려받지 않음 (F-03-03)", () => {
+  const f = (name: string, b: string, order: number) => ({ id: name, name, size: 1, lastModified: 0, order, batch: 1, bytes: new TextEncoder().encode(b) });
+  const a = analyze([f("A.pptx", "X", 0), f("B.pptx", "Y", 1), f("발표자료_최종.pptx", "X", 2), f("발표자료_진짜최종.pptx", "Y", 3)], rules);
+  assert.deepEqual(rename(a).filter((r) => r.download).map((r) => r.from), ["A.pptx", "B.pptx"]);
+});

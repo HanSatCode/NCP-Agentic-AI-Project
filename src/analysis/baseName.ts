@@ -34,12 +34,13 @@ export function parseName(name: string, rules: Rules): ParsedName {
   let s = stem;
 
   // 2. 이름 끝의 복사본 표시. "보고서 - 복사본 (2)"처럼 겹칠 수 있어 더 지울 게 없을 때까지 반복
+  //    "(1)"처럼 다 지워져도 지운다. 빈 이름이면 7단계가 원래 이름을 쓴다
   const copyRes = rules.copyMarks.map((p) => new RegExp(p, "iu"));
   for (let changed = true; changed; ) {
     changed = false;
     for (const re of copyRes) {
       const m = s.match(re);
-      if (m && m.index! > 0) {
+      if (m && m[0]) {
         s = s.slice(0, m.index);
         changed = true;
       }
