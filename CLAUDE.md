@@ -55,20 +55,20 @@
 | `app/globals.css` | 공통 색·글자·버튼·배지 토큰과 정리 도구 스타일. 끝에 "모바일 최적화" 구역 (D-47) | 전체 |
 | `app/TypingName.tsx` | 글자를 썼다 지웠다 하는 애니메이션 (헤더 이름, 소개 제목, D-49) | S-00, S-01 |
 | `app/StartLink.tsx` | 페이지를 넘길 때 흐려졌다 올라오는 전환 링크 (D-52) | S-00 ↔ S-01 |
-| `rules/version-rules.json` | 버전 판정 규칙 (키워드·점수·패턴) | F-02-01, F-02-03, `/version-rules` |
+| `rules/version-rules.json` | 버전 판정 규칙 (키워드·점수·패턴) | F-02-01, F-02-03, `/QA` 1절 |
 | `src/analysis/` | 분석 로직. 화면(DOM) 코드 없이 입력을 받아 결과만 돌려주는 함수 (zip 풀기 `unzip.ts`도 여기) | F-01-07, F-02, F-03, `/check-result` |
-| `public/samples/demo/` | 시연용 예시 파일 24개 (D-34) | F-01-03, `/make-samples` |
-| `public/samples/edge/` | 애매한 경우를 확인하는 테스트 파일 | `/check-result` |
+| `public/samples/demo/` | 시연용 예시 파일 24개 (D-34) | F-01-03, `/QA` 2절 |
+| `public/samples/edge/` | 애매한 경우를 확인하는 테스트 파일 | `/QA` 3절 |
 | `public/samples/manifest.json` | 예시 파일별 수정 날짜와 메타데이터 값 | F-01-03 (D-14), 메타데이터 판정 |
-| `public/samples/expected.json` | 파일별 기대 결과 | `/check-result` |
-| `scripts/make-samples.ts` | 예시 파일 만들기 + 수정 날짜 맞추기 (`npm run samples`) | `/make-samples` |
-| `scripts/check-result.ts` | 예시 파일로 분석 결과 검사 (`npm run check`) | `/check-result` |
+| `public/samples/expected.json` | 파일별 기대 결과 | `/QA` 3절 |
+| `scripts/make-samples.ts` | 예시 파일 만들기 + 수정 날짜 맞추기 (`npm run samples`) | `/QA` 2절 |
+| `scripts/check-result.ts` | 예시 파일로 분석 결과 검사 (`npm run check`) | `/QA` 3절 |
 | `scripts/qa.ts` | 규칙·기본 이름·시나리오·무작위 불변식 검사 (`npm run qa`) | `/QA` |
 | `next.config.ts` | 정적 내보내기(`out/`), 하위 경로(`BASE_PATH`) | 배포 |
 | `deploy/nginx.conf` | NGINX location 설정과 올리는 순서 | 배포 |
 
 - 기술 스택에 맞춰 위치를 바꿔도 된다(예: 예시 파일은 브라우저가 받을 수 있는 공개 폴더). 바꾸면 이 표도 고친다
-- 분석 로직은 화면 코드와 섞지 않는다. `/check-result`가 브라우저 없이 같은 함수를 돌려 검사한다
+- 분석 로직은 화면 코드와 섞지 않는다. `npm run check`가 브라우저 없이 같은 함수를 돌려 검사한다
 - 키워드와 점수는 코드에 직접 쓰지 않고 `rules/version-rules.json`에서 읽는다
 
 ## 필수 기능 (3개)
@@ -356,7 +356,7 @@ UX 규칙:
 - 중복 판별(F-02-06)은 바이트가 완전히 같은 경우라서 이것과 다르다
 
 ### 메타데이터 테스트 파일
-`/make-samples`가 실제 문서로 만들고 메타데이터 값을 `manifest.json`에 적는다 (D-16).
+`npm run samples`(`/QA` 2절)가 실제 문서로 만들고 메타데이터 값을 `manifest.json`에 적는다 (D-16).
 
 | 파일 | 메타데이터 | 기대 결과 |
 |---|---|---|
@@ -404,7 +404,7 @@ UX 규칙:
 - 작업 전 git pull, 기능 하나가 끝나면 commit · push 한다
 - 커밋 메시지는 한국어로 쓰고, 기능 ID를 앞에 붙인다 (예: "F-02-04 최신 후보 추천 추가")
 - 기능은 한 번에 하나씩 만들고, 끝나면 브라우저에서 확인할 방법을 알려준다
-- 분석·이름 변경 기능을 만들거나 고친 뒤에는 `/check-result`로 확인한다
+- 분석·이름 변경 기능을 만들거나 고친 뒤에는 `npm run check`(`/QA` 3절)로 확인한다
 - 큰 작업은 Plan 모드로 계획을 먼저 보여주고 승인받는다
 - 오류가 나면 원인과 고칠 방법을 먼저 설명하고, 승인받은 뒤 고친다
 - "보류" 결정은 팀이 확정하기 전에는 명세서대로 만든다
