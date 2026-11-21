@@ -1,4 +1,4 @@
-/* 소개 페이지 (/intro) 전용. 색·글꼴·버튼은 globals.css의 토큰과 .btn·.wordmark를 그대로 쓴다 */
+/* 소개 화면 (첫 화면 /) 전용. 색·글꼴·버튼은 globals.css의 토큰과 .btn·.wordmark를 그대로 쓴다 */
 
 /* 본 화면은 한 화면 고정(main 100dvh)이지만 소개 페이지는 아래로 스크롤 */
 main:has(> .intro) {

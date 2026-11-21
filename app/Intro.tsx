@@ -1,14 +1,8 @@
-// 소개 페이지 (/intro): 서비스가 무엇을 해 주는지 처음 온 사람에게 설명하고 [시작하기]로 본 화면(/)에 보낸다
+// 소개 화면 (첫 화면 /): 서비스가 무엇을 해 주는지 처음 온 사람에게 설명하고 [시작하기]로 정리 도구(/start)에 보낸다
 // 화면 코드만 있음. 예시 이름·결과는 public/samples/demo와 rename.test.ts의 기대 결과와 같다
-import type { Metadata } from "next";
 import Link from "next/link";
-import Logo from "../Logo";
+import Logo from "./Logo";
 import "./intro.css";
-
-export const metadata: Metadata = {
-  title: "Filefit 소개",
-  description: "비슷한 파일을 올리면 같은 문서끼리 묶고, 최신 후보를 찾아, 이름을 정리해 드려요.",
-};
 
 const BEFORE = [
   "발표자료(1).pptx",
@@ -52,17 +46,17 @@ const CLUES = [
   { name: "수정 날짜", ex: ["11월 20일 14:40"], body: "단서가 비슷하면 파일을 마지막으로 고친 시각을 봐요." },
 ];
 
-export default function IntroPage() {
+export default function Intro() {
   return (
     <div className="intro">
       <header className="intro-nav">
-        <Link href="/" className="brand-title" aria-label="Filefit 파일핏 시작하기">
+        <Link href="/" className="brand-title" aria-label="Filefit 파일핏">
           <Logo size={34} />
           <span className="wordmark" aria-hidden>
             File<span className="wordmark-fit">fit</span>
           </span>
         </Link>
-        <Link href="/" className="btn primary intro-nav-cta">
+        <Link href="/start" className="btn primary intro-nav-cta">
           시작하기
         </Link>
       </header>
@@ -81,7 +75,7 @@ export default function IntroPage() {
             정리해요.
           </p>
           <div className="intro-cta">
-            <Link href="/" className="btn primary">
+            <Link href="/start" className="btn primary">
               지금 정리하기
             </Link>
             <a href="#how" className="btn">
@@ -191,7 +185,7 @@ export default function IntroPage() {
       <section className="intro-final">
         <h2>받은 파일함, 지금 정리해 볼까요?</h2>
         <p>파일이 없어도 괜찮아요. 시작 화면의 [예시 파일로 해보기]로 바로 볼 수 있어요.</p>
-        <Link href="/" className="btn primary">
+        <Link href="/start" className="btn primary">
           Filefit 시작하기
         </Link>
       </section>
