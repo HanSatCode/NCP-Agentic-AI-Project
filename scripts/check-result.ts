@@ -8,6 +8,7 @@ import manifest from "../public/samples/manifest.json" with { type: "json" };
 import { parseName } from "../src/analysis/baseName.ts";
 import { findDuplicates } from "../src/analysis/duplicate.ts";
 import { analyze } from "../src/analysis/analyze.ts";
+import { rename } from "../src/analysis/rename.ts";
 import type { InputFile } from "../src/analysis/types.ts";
 
 type ExpectedFile = { path: string; baseName?: string; duplicateOf?: string; newName?: string | null };
@@ -75,6 +76,15 @@ for (const sc of expected.scenarios) {
   if (s.summary !== undefined && result.summary !== s.summary) errors.push(`요약 '${result.summary}', 기대 '${s.summary}'`);
   if (s.blockedGroups !== undefined && result.needsChoice !== s.blockedGroups) {
     errors.push(`확인 필요 그룹 ${result.needsChoice}개, 기대 ${s.blockedGroups}개`);
+  }
+
+  // F-03-01 새 이름 ([전체 버전] 기준, 직접 선택 없음). null = 중복 제외 또는 아직 고르지 않은 "확인 필요"
+  const rows = rename(result, { scope: "all" });
+  for (const f of want) {
+    if (f.newName === undefined) continue;
+    const name = path.basename(f.path);
+    const got = rows.find((r) => r.id === name)?.to ?? null;
+    if (got !== f.newName) errors.push(`${name}: 새 이름 '${got}', 기대 '${f.newName}'`);
   }
 
   failures += errors.length;
