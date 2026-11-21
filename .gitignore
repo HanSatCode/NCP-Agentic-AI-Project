@@ -5,3 +5,6 @@ next-env.d.ts
 
 # next dev가 자동으로 만드는 AI 도구 안내 파일. 이 프로젝트는 CLAUDE.md를 씀
 AGENTS.md
+
+# /QA 보고서. 돌릴 때마다 새로 만드는 결과물
+output/
