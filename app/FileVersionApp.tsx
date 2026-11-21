@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DragEvent, KeyboardEvent } from "react";
+import Link from "next/link";
 import FilePreview from "./FilePreview";
 import Logo from "./Logo";
 // 분석 로직은 src/analysis (화면 코드 없음, /check-result와 같은 함수). 규칙은 rules/version-rules.json
@@ -457,11 +458,23 @@ export default function FileVersionApp() {
     <div className="app">
       {/* S-01 상단 헤더 */}
       <header className="header">
-        <h1 className="brand-title" aria-label="Filefit 파일핏">
-          <Logo size={38} />
-          <span className="wordmark" aria-hidden>
-            File<span className="wordmark-fit">fit</span>
-          </span>
+        <h1 className="brand-title">
+          {/* 로고를 누르면 첫 화면(소개)으로. 올린 파일이 있으면 목록이 사라지므로 먼저 묻는다 */}
+          <Link
+            href="/"
+            className="brand-link"
+            aria-label="Filefit 파일핏, 소개 화면으로"
+            title="소개 화면으로"
+            onClick={(e) => {
+              if (items.length > 0 && !window.confirm("소개 화면으로 가면 올린 파일 목록이 사라져요. 이동할까요?"))
+                e.preventDefault();
+            }}
+          >
+            <Logo size={38} />
+            <span className="wordmark" aria-hidden>
+              File<span className="wordmark-fit">fit</span>
+            </span>
+          </Link>
         </h1>
         <nav className="stepper" aria-label="진행 단계" inert={busy}>
           {steps.map((s) => {

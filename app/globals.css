@@ -1526,3 +1526,21 @@ main {
   opacity: 0.5;
   filter: saturate(0.4);
 }
+
+/* 정리 도구(/start) 왼쪽 위 로고 → 첫 화면(소개)으로 가는 링크 (feat/intro) */
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: opacity 0.15s;
+}
+.brand-link:hover {
+  opacity: 0.75;
+}
+.brand-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
