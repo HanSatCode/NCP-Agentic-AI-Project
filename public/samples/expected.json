@@ -4,14 +4,14 @@
     {
       "name": "시연용 예시 8개",
       "files": [
-        { "path": "demo/발표자료_진짜최종.pptx", "baseName": "발표자료", "newName": "발표자료_v4_20261120.pptx" },
-        { "path": "demo/발표자료 최종수정.pptx", "baseName": "발표자료", "newName": "발표자료_v3_20261119.pptx" },
-        { "path": "demo/발표자료_최종.pptx", "baseName": "발표자료", "newName": "발표자료_v2_20261118.pptx" },
-        { "path": "demo/발표자료(1).pptx", "baseName": "발표자료", "newName": "발표자료_v1_20261117.pptx" },
-        { "path": "demo/보고서_v3.docx", "baseName": "보고서", "newName": "보고서_v2_20261120.docx" },
+        { "path": "demo/발표자료_진짜최종.pptx", "baseName": "발표자료", "newName": "발표자료_v04_20261120.pptx" },
+        { "path": "demo/발표자료 최종수정.pptx", "baseName": "발표자료", "newName": "발표자료_v03_20261119.pptx" },
+        { "path": "demo/발표자료_최종.pptx", "baseName": "발표자료", "newName": "발표자료_v02_20261118.pptx" },
+        { "path": "demo/발표자료(1).pptx", "baseName": "발표자료", "newName": "발표자료_v01_20261117.pptx" },
+        { "path": "demo/보고서_v3.docx", "baseName": "보고서", "newName": "보고서_v02_20261120.docx" },
         { "path": "demo/보고서_v3 복사본.docx", "baseName": "보고서", "duplicateOf": "보고서_v3.docx", "newName": null },
-        { "path": "demo/보고서_v2.docx", "baseName": "보고서", "newName": "보고서_v1_20261116.docx" },
-        { "path": "demo/회의록_1115.docx", "baseName": "회의록", "newName": "회의록_v1_20261115.docx" }
+        { "path": "demo/보고서_v2.docx", "baseName": "보고서", "newName": "보고서_v01_20261116.docx" },
+        { "path": "demo/회의록_1115.docx", "baseName": "회의록", "newName": "회의록_v01_20261115.docx" }
       ],
       "groups": [
         { "baseName": "발표자료", "status": "최신 후보", "latest": "발표자료_진짜최종.pptx", "reason": "파일명에 '진짜최종'이 있어요" },
@@ -23,8 +23,8 @@
     {
       "name": "D-01 최종_수정이 30점으로 1위",
       "files": [
-        { "path": "edge/기획서_최종_수정.docx", "baseName": "기획서", "newName": "기획서_v2_20261118.docx" },
-        { "path": "edge/기획서_최종.docx", "baseName": "기획서", "newName": "기획서_v1_20261119.docx" }
+        { "path": "edge/기획서_최종_수정.docx", "baseName": "기획서", "newName": "기획서_v02_20261118.docx" },
+        { "path": "edge/기획서_최종.docx", "baseName": "기획서", "newName": "기획서_v01_20261119.docx" }
       ],
       "groups": [
         { "baseName": "기획서", "status": "최신 후보", "latest": "기획서_최종_수정.docx", "reason": "파일명에 '최종_수정'이 있어요" }
@@ -33,8 +33,8 @@
     {
       "name": "D-02·D-05 복사본 표시는 버전 아님, 수정 날짜로 1위",
       "files": [
-        { "path": "edge/회의록.hwp", "baseName": "회의록", "newName": "회의록_v1_20261118.hwp" },
-        { "path": "edge/회의록(1).hwp", "baseName": "회의록", "newName": "회의록_v2_20261119.hwp" }
+        { "path": "edge/회의록.hwp", "baseName": "회의록", "newName": "회의록_v01_20261118.hwp" },
+        { "path": "edge/회의록(1).hwp", "baseName": "회의록", "newName": "회의록_v02_20261119.hwp" }
       ],
       "groups": [
         { "baseName": "회의록", "status": "최신 후보", "latest": "회의록(1).hwp", "reason": "수정 날짜가 가장 늦어요. 카톡에서 받은 순서일 수 있어요" }
@@ -54,14 +54,14 @@
     {
       "name": "D-03 1350은 날짜가 아님",
       "files": [
-        { "path": "edge/실험_1350.docx", "baseName": "실험1350", "newName": "실험1350_v1_20261120.docx" }
+        { "path": "edge/실험_1350.docx", "baseName": "실험1350", "newName": "실험1350_v01_20261120.docx" }
       ],
       "singles": ["실험_1350.docx"]
     },
     {
       "name": "D-04 한 번에 올리면 복사본 표시 쪽이 중복",
       "files": [
-        { "path": "edge/자료_v2.pdf", "baseName": "자료", "newName": "자료_v1_20261119.pdf" },
+        { "path": "edge/자료_v2.pdf", "baseName": "자료", "newName": "자료_v01_20261119.pdf" },
         { "path": "edge/자료_v2 - 복사본.pdf", "baseName": "자료", "duplicateOf": "자료_v2.pdf", "newName": null }
       ],
       "groups": [

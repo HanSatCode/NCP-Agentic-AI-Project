@@ -98,3 +98,10 @@ test("빈 이름·확장자 없음", () => {
   assert.equal(p("최종 (1).pptx").baseName, "최종"); // D-27: 복사본 표시만 지운 이름이라 "최종.pptx"와 한 그룹
   assert.equal(p("final_1.txt").baseName, "final");
 });
+
+test("D-33: 정리한 이름(v04)을 다시 올려도 같은 그룹·같은 버전으로 읽음", () => {
+  const r = p("발표자료_v04_20261120.pptx");
+  assert.equal(r.baseName, "발표자료");
+  assert.equal(r.version?.n, 4);
+  assert.equal(p("발표자료_v10_20261120.pptx").version?.n, 10);
+});

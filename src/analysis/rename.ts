@@ -29,7 +29,7 @@ export function yyyymmdd(ms: number): string {
 export const cleanBaseName = (s: string) => s.trim().replace(FORBIDDEN, "_");
 
 const newName = (base: string, v: number, f: FileResult) =>
-  `${base}_v${v}_${yyyymmdd(f.lastModified)}${f.parsed.ext ? `.${f.parsed.ext}` : ""}`;
+  `${base}_v${pad(v)}_${yyyymmdd(f.lastModified)}${f.parsed.ext ? `.${f.parsed.ext}` : ""}`;
 
 // 그룹 안 번호: 오래된 순 1부터, 최신 파일이 가장 큰 번호. 중복은 뺌 (D-06)
 // 직접 고르면 고른 파일이 가장 큰 번호, 나머지는 원래 순서 유지 (D-09)

@@ -59,7 +59,7 @@ const S = "시나리오";
 { // E06 기준 1 > 3
   const a = analyze(mk([{ name: "보고서_v2.docx", mtime: "11-18T10:00" }, { name: "보고서_진짜최종.docx", mtime: "11-20T10:00" }]), rules);
   check(S, "E06 v2가 진짜최종보다 우선", [latestName(a, "보고서"), grp(a, "보고서")?.reason], ["보고서_v2.docx", "파일명에 v2가 있어요"]);
-  check(S, "E06 새 이름", rename(a, { scope: "all" }).map((r) => r.to), ["보고서_v2_20261118.docx", "보고서_v1_20261120.docx"]);
+  check(S, "E06 새 이름", rename(a, { scope: "all" }).map((r) => r.to), ["보고서_v02_20261118.docx", "보고서_v01_20261120.docx"]);
 }
 { // E07
   const a = analyze(mk([{ name: "정리_20261119.docx", mtime: "11-20T10:00" }, { name: "정리_2026-11-20.docx", mtime: "11-19T10:00" }]), rules);
@@ -100,7 +100,7 @@ const S = "시나리오";
 { // E14 이름 같고 내용 다름, 따로 올림
   const a = analyze(mk([{ name: "보고서.docx", mtime: "11-18T10:00", batch: 1, bytes: "A" }, { name: "보고서.docx", mtime: "11-20T10:00", batch: 2, bytes: "B" }]), rules);
   check(S, "E14 내용 다르면 중복 아님", [a.duplicates, grp(a, "보고서")?.files.length, grp(a, "보고서")?.decidedBy], [0, 2, "mtime"]);
-  check(S, "E14 새 이름 겹치지 않음", rename(a, { scope: "all" }).map((r) => r.to).sort(), ["보고서_v1_20261118.docx", "보고서_v2_20261120.docx"]);
+  check(S, "E14 새 이름 겹치지 않음", rename(a, { scope: "all" }).map((r) => r.to).sort(), ["보고서_v01_20261118.docx", "보고서_v02_20261120.docx"]);
 }
 { // E15 그룹이 달라도 중복, 따로 올리면 나중 쪽
   const a = analyze(mk([{ name: "보고서_v3.docx", mtime: "11-20T10:00", batch: 1, bytes: "SAME" }, { name: "기획안_최종.docx", mtime: "11-21T10:00", batch: 2, bytes: "SAME" }]), rules);
@@ -118,12 +118,12 @@ const S = "시나리오";
 { // E17
   check(S, "E17 확장자 없음", splitExt("README"), ["README", ""]);
   const a = analyze(mk([{ name: "README", mtime: "11-20T10:00" }, { name: "x.pdf", mtime: "11-20T10:00" }]), rules);
-  check(S, "E17 확장자 없음 새 이름", rename(a).find((r) => r.from === "README")?.to, "README_v1_20261120");
+  check(S, "E17 확장자 없음 새 이름", rename(a).find((r) => r.from === "README")?.to, "README_v01_20261120");
 }
 { // E18
   const a = analyze(mk([{ name: "최종.docx", mtime: "11-20T10:00" }, { name: "최종 (1).docx", mtime: "11-21T10:00" }]), rules);
   check(S, "E18 빈 이름 → 복사본 표시만 지운 이름으로 한 그룹 (D-27)", [a.groups.map((g) => [g.baseName, g.files.length, g.latestId]), a.singles.length], [[["최종", 2, "최종 (1).docx|1"]], 0]);
-  check(S, "E18 새 이름", rename(a, { scope: "all" }).map((r) => r.to), ["최종_v2_20261121.docx", "최종_v1_20261120.docx"]);
+  check(S, "E18 새 이름", rename(a, { scope: "all" }).map((r) => r.to), ["최종_v02_20261121.docx", "최종_v01_20261120.docx"]);
 }
 { // D-09 직접 선택, F-03-05 충돌·금지 문자, D-11 단독 포함
   const a = analyze(mk([
@@ -134,15 +134,15 @@ const S = "시나리오";
   const g = a.groups[0];
   const pick = g.files.find((f) => f.name === "발표자료_최종.pptx")!.id;
   check(S, "D-09 고른 파일이 가장 큰 번호", rename(a, { scope: "all", choices: { [g.key]: pick } }).map((r) => [r.from, r.to]),
-    [["발표자료_진짜최종.pptx", "발표자료_v3_20261120.pptx"], ["발표자료 최종수정.pptx", "발표자료_v2_20261119.pptx"],
-     ["발표자료_최종.pptx", "발표자료_v4_20261118.pptx"], ["발표자료(1).pptx", "발표자료_v1_20261117.pptx"], ["회의록.pptx", "회의록_v1_20261120.pptx"]]);
+    [["발표자료_진짜최종.pptx", "발표자료_v03_20261120.pptx"], ["발표자료 최종수정.pptx", "발표자료_v02_20261119.pptx"],
+     ["발표자료_최종.pptx", "발표자료_v04_20261118.pptx"], ["발표자료(1).pptx", "발표자료_v01_20261117.pptx"], ["회의록.pptx", "회의록_v01_20261120.pptx"]]);
   check(S, "D-11 [최신 파일만]에 단독 포함", rename(a).filter((r) => r.download).map((r) => r.from), ["발표자료_진짜최종.pptx", "회의록.pptx"]);
-  check(S, "F-03-05 금지 문자 → _", rename(a, { baseNames: { [g.key]: 'a/b:c*?"<>|' } })[0].to, "a_b_c_______v4_20261120.pptx");
+  check(S, "F-03-05 금지 문자 → _", rename(a, { baseNames: { [g.key]: 'a/b:c*?"<>|' } })[0].to, "a_b_c_______v04_20261120.pptx");
   // 기본 이름을 단독 파일 이름과 같게 고치면 v1 vs v4라 안 겹침 → 같은 번호가 나오게 만든다
   const b = analyze(mk([{ name: "A_v1.pdf", mtime: "11-20T10:00" }, { name: "A_v2.pdf", mtime: "11-20T11:00" }, { name: "B_v1.pdf", mtime: "11-20T10:00" }, { name: "B_v2.pdf", mtime: "11-20T11:00" }]), rules);
   const keys = Object.fromEntries(b.groups.map((x) => [x.key, "같은이름"]));
   check(S, "F-03-05 이름 겹침 → _2", rename(b, { scope: "all", baseNames: keys }).map((r) => r.to),
-    ["같은이름_v2_20261120.pdf", "같은이름_v1_20261120.pdf", "같은이름_v2_20261120_2.pdf", "같은이름_v1_20261120_2.pdf"]);
+    ["같은이름_v02_20261120.pdf", "같은이름_v01_20261120.pdf", "같은이름_v02_20261120_2.pdf", "같은이름_v01_20261120_2.pdf"]);
 }
 // 메타데이터 M01~M04: D-19 보류
 out.push({ stage: S, id: "M01~M04 메타데이터 판정", ok: "skip", detail: "D-19 보류" });

@@ -18,19 +18,19 @@ test("0개면 null (버튼 비활성)", () => {
 });
 
 test("1개면 그 파일을 새 이름으로", () => {
-  const d = makeDownload([row("a", "발표자료_v4_20261120.pptx"), row("b", "y.txt", false)], sources, NOW)!;
-  assert.equal(d.filename, "발표자료_v4_20261120.pptx");
+  const d = makeDownload([row("a", "발표자료_v04_20261120.pptx"), row("b", "y.txt", false)], sources, NOW)!;
+  assert.equal(d.filename, "발표자료_v04_20261120.pptx");
   assert.deepEqual(d.data, enc("AAA"));
   assert.equal(d.count, 1);
 });
 
 test("2개 이상이면 정리된파일_오늘날짜.zip, 안에 새 이름과 원래 내용", () => {
-  const d = makeDownload([row("a", "발표자료_v4_20261120.pptx"), row("b", "보고서_v2_20261119.docx")], sources, NOW)!;
+  const d = makeDownload([row("a", "발표자료_v04_20261120.pptx"), row("b", "보고서_v02_20261119.docx")], sources, NOW)!;
   assert.equal(d.filename, "정리된파일_20261121.zip");
   assert.equal(d.count, 2);
   const files = unzipSync(d.data);
-  assert.deepEqual(Object.keys(files), ["발표자료_v4_20261120.pptx", "보고서_v2_20261119.docx"]);
-  assert.deepEqual(files["보고서_v2_20261119.docx"], enc("BBB"));
+  assert.deepEqual(Object.keys(files), ["발표자료_v04_20261120.pptx", "보고서_v02_20261119.docx"]);
+  assert.deepEqual(files["보고서_v02_20261119.docx"], enc("BBB"));
   // 한글 파일 이름이 Windows 탐색기에서 깨지지 않으려면 UTF-8 표시(일반 플래그 11번 비트)가 있어야 함
   const flags = d.data[6] | (d.data[7] << 8);
   assert.ok(flags & 0x800, "UTF-8 플래그 없음");
