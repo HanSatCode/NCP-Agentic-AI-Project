@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "node --test \"src/**/*.test.ts\"",
     "samples": "node scripts/make-samples.ts",
-    "check": "node scripts/check-result.ts"
+    "check": "node scripts/check-result.ts",
+    "qa": "node scripts/qa.ts"
   },
   "engines": {
     "node": ">=22.18"

@@ -53,6 +53,7 @@
 | `public/samples/expected.json` | 파일별 기대 결과 | `/check-result` |
 | `scripts/make-samples.ts` | 예시 파일 만들기 + 수정 날짜 맞추기 (`npm run samples`) | `/make-samples` |
 | `scripts/check-result.ts` | 예시 파일로 분석 결과 검사 (`npm run check`) | `/check-result` |
+| `scripts/qa.ts` | 규칙·기본 이름·시나리오·무작위 불변식 검사 (`npm run qa`) | `/QA` |
 
 - 기술 스택에 맞춰 위치를 바꿔도 된다(예: 예시 파일은 브라우저가 받을 수 있는 공개 폴더). 바꾸면 이 표도 고친다
 - 분석 로직은 화면 코드와 섞지 않는다. `/check-result`가 브라우저 없이 같은 함수를 돌려 검사한다
