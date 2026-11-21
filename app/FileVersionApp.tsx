@@ -88,11 +88,10 @@ function FileTypeIcon({ name }: { name: string }) {
   );
 }
 
-function SectionHead({ step, title, desc, id, aside }: { step: number; title: string; desc: string; id: string; aside?: React.ReactNode }) {
+function SectionHead({ title, desc, id, aside }: { title: string; desc: string; id: string; aside?: React.ReactNode }) {
   return (
     <div className="section-head">
       <div className="section-title">
-        <span className="kicker">STEP {step}</span>
         <h2 id={id}>{title}</h2>
         <p className="desc">{desc}</p>
       </div>
@@ -383,6 +382,26 @@ export default function FileVersionApp() {
             File<span className="wordmark-fit">fit</span>
           </span>
         </h1>
+        <nav className="stepper" aria-label="진행 단계">
+          {steps.map((s) => {
+            const state = step === s.n ? "current" : s.n < step ? "done" : "todo";
+            return (
+              <button
+                key={s.n}
+                type="button"
+                className={`stepper-item ${state}`}
+                aria-current={step === s.n ? "step" : undefined}
+                disabled={!s.visible}
+                onClick={() => setView(s.n)}
+              >
+                <span className="stepper-num" aria-hidden>
+                  {state === "done" ? "✓" : s.n}
+                </span>
+                <span className="stepper-label">{s.label}</span>
+              </button>
+            );
+          })}
+        </nav>
         <p className="trust">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <rect x="4" y="11" width="16" height="10" rx="2" />
@@ -392,35 +411,10 @@ export default function FileVersionApp() {
         </p>
       </header>
 
-      <nav className="stepper" aria-label="진행 단계">
-        {steps.map((s) => {
-          const state = step === s.n ? "current" : s.n < step ? "done" : "todo";
-          return (
-            <button
-              key={s.n}
-              type="button"
-              className={`stepper-item ${state}`}
-              aria-current={step === s.n ? "step" : undefined}
-              disabled={!s.visible}
-              onClick={() => setView(s.n)}
-            >
-              <span className="stepper-num" aria-hidden>
-                {state === "done" ? "✓" : s.n}
-              </span>
-              <span className="stepper-text">
-                <span className="stepper-kicker">STEP {s.n}</span>
-                <span className="stepper-label">{s.label}</span>
-              </span>
-            </button>
-          );
-        })}
-      </nav>
-
       {/* S-02 STEP 1 파일 업로드 */}
       {view === 1 && (
       <section className="panel" aria-labelledby="s02-title">
         <SectionHead
-          step={1}
           id="s02-title"
           title="파일 업로드"
           desc="같은 과제의 여러 버전 파일을 한 번에 올려 주세요. 파일은 이 브라우저 밖으로 나가지 않아요."
@@ -571,7 +565,6 @@ export default function FileVersionApp() {
       {view === 2 && analysis && (
         <section className="panel" aria-labelledby="s03-title">
           <SectionHead
-            step={2}
             id="s03-title"
             title="분석 결과"
             desc="추천은 후보일 뿐이에요. 최신 파일이 다르면 직접 골라 주세요."
@@ -709,7 +702,6 @@ export default function FileVersionApp() {
       {view === 3 && analysis && showRename && (
         <section className="panel" aria-labelledby="s04-title">
           <SectionHead
-            step={3}
             id="s04-title"
             title="이름 변경·내려받기"
             desc="새 이름 규칙은 기본이름_v번호_수정날짜예요. 그룹의 기본 이름은 직접 고칠 수 있어요."
