@@ -1,0 +1,399 @@
+/* 소개 페이지 (/intro) 전용. 색·글꼴·버튼은 globals.css의 토큰과 .btn·.wordmark를 그대로 쓴다 */
+
+/* 본 화면은 한 화면 고정(main 100dvh)이지만 소개 페이지는 아래로 스크롤 */
+main:has(> .intro) {
+  display: block;
+  height: auto;
+  padding: 0;
+}
+
+.intro {
+  --intro-max: 1120px;
+  background: var(--surface);
+}
+.intro > * {
+  max-width: var(--intro-max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+  box-sizing: content-box;
+}
+
+/* ---------- 상단 ---------- */
+.intro-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 20px;
+}
+.intro-nav .brand-title {
+  color: var(--ink);
+  text-decoration: none;
+}
+.intro .btn {
+  text-decoration: none;
+}
+.intro .intro-nav .intro-nav-cta.btn.primary {
+  flex: none;
+  min-width: 0;
+  height: 40px;
+  font-size: 14px;
+  padding: 0 18px;
+}
+
+/* ---------- 첫 화면 ---------- */
+.intro-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+  padding-block: 56px 80px;
+}
+.intro-eyebrow {
+  margin: 0 0 14px;
+  color: var(--brand);
+  font-size: 14px;
+  font-weight: 700;
+}
+.intro-title {
+  margin: 0;
+  font-size: clamp(28px, 3.6vw, 42px);
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+  color: var(--ink);
+}
+.intro-title-accent {
+  color: var(--brand);
+}
+.intro-lead {
+  margin: 20px 0 0;
+  max-width: 34em;
+  font-size: 17px;
+  color: var(--text-2);
+}
+.intro-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 30px;
+}
+.intro-cta .btn {
+  height: 52px;
+}
+.intro-cta .btn.primary {
+  min-width: 180px;
+}
+.intro-trust {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 18px 0 0;
+  font-size: 13px;
+  color: var(--green);
+}
+
+/* 정리 전 → 후 예시 */
+.intro-demo {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) auto minmax(0, 1.1fr);
+  align-items: center;
+  gap: 12px;
+}
+.demo-card {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+.demo-card.is-after {
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.demo-label {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.demo-before,
+.demo-after {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.demo-before li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+.demo-before li svg {
+  flex: none;
+  color: var(--faint);
+}
+.demo-arrow {
+  font-size: 22px;
+  color: var(--brand);
+}
+.demo-after li {
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.demo-after li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.demo-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+.demo-count {
+  font-size: 12px;
+  color: var(--muted);
+}
+.demo-badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--green-bg);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+}
+.demo-from,
+.demo-to,
+.demo-note {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.demo-from {
+  color: var(--muted);
+}
+.demo-to {
+  color: var(--brand);
+  font-weight: 600;
+}
+.demo-note {
+  color: var(--gray);
+}
+
+/* ---------- 본문 구역 ---------- */
+.intro-section {
+  padding-block: 72px;
+  border-top: 1px solid var(--border);
+}
+.intro-h2 {
+  margin: 0;
+  font-size: clamp(24px, 2.6vw, 30px);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.intro-sub {
+  margin: 10px 0 0;
+  max-width: 40em;
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.intro-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 36px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.intro-step {
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.intro-step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--brand);
+  font-weight: 800;
+}
+.intro-step h3,
+.intro-clue h3 {
+  margin: 14px 0 6px;
+  font-size: 18px;
+  color: var(--ink);
+}
+.intro-step p,
+.intro-clue p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 14.5px;
+}
+
+.intro-clues {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 36px;
+}
+.intro-clue {
+  padding: 22px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.intro-clue .intro-clue-order {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brand);
+}
+.intro-clue h3 {
+  margin-top: 6px;
+}
+.intro-clue .intro-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.intro-chips code {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.intro-notes {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+.intro-notes p {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--text-2);
+}
+.badge-dup,
+.badge-check {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.badge-dup {
+  background: var(--gray-bg);
+  color: var(--gray);
+}
+.badge-check {
+  background: var(--yellow-bg);
+  color: var(--yellow);
+}
+
+/* 안심 */
+.intro-safe {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+}
+.intro-safe-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.intro-safe-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  background: var(--green-bg);
+  color: var(--green);
+  font-weight: 700;
+}
+.intro-safe-list li::before {
+  content: "✓";
+}
+
+/* 마지막 권유 */
+.intro .intro-final {
+  max-width: none;
+  margin: 0;
+  padding: 80px var(--gutter);
+  background: var(--ink);
+  color: #fff;
+  text-align: center;
+  box-sizing: border-box;
+}
+.intro-final h2 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(24px, 3vw, 34px);
+  letter-spacing: -0.02em;
+}
+.intro-final p {
+  margin: 12px auto 28px;
+  max-width: 32em;
+  color: #c6ccd8;
+}
+.intro-footer {
+  padding-block: 24px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* ---------- 좁은 화면 ---------- */
+@media (max-width: 960px) {
+  .intro-hero,
+  .intro-safe {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .intro-clues {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .intro > * {
+    padding-inline: 16px;
+  }
+  .intro .intro-final {
+    padding-inline: 16px;
+  }
+  .intro-hero {
+    padding-block: 28px 56px;
+  }
+  .intro-demo {
+    grid-template-columns: 1fr;
+  }
+  .demo-arrow {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+  .intro-steps,
+  .intro-clues {
+    grid-template-columns: 1fr;
+  }
+  .intro-section {
+    padding-block: 52px;
+  }
+  .intro-cta .btn {
+    flex: 1;
+  }
+}
