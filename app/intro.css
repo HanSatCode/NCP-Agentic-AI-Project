@@ -7,15 +7,12 @@ main:has(> .intro) {
   padding: 0;
 }
 
+/* 본 화면처럼 가운데 고정 폭 없이 화면 폭 전체를 쓴다 (가장자리는 --gutter만) */
 .intro {
-  --intro-max: 1120px;
   background: var(--surface);
 }
 .intro > * {
-  max-width: var(--intro-max);
-  margin-inline: auto;
   padding-inline: var(--gutter);
-  box-sizing: content-box;
 }
 
 /* ---------- 상단 ---------- */
@@ -333,8 +330,6 @@ main:has(> .intro) {
 
 /* 마지막 권유 */
 .intro .intro-final {
-  max-width: none;
-  margin: 0;
   padding: 80px var(--gutter);
   background: var(--ink);
   color: #fff;
