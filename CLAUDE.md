@@ -34,7 +34,7 @@
 ## 기술 스택·실행 (팀이 채운다)
 | 항목 | 내용 |
 |---|---|
-| 기술 스택 | Next.js (App Router, TypeScript), Node.js 22.13 이상 |
+| 기술 스택 | Next.js (App Router, TypeScript), Node.js 22.18 이상 |
 | 로컬 실행 방법 | `npm install` 후 `npm run dev` → http://localhost:3000 |
 | 배포 주소 | http://(공인IP) — https가 아니다 |
 | 처리 방식 | 브라우저에서만 처리 (D-17) |

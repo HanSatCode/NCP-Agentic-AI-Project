@@ -18,7 +18,7 @@
 ## 기술 스택
 
 - Next.js (App Router, TypeScript)
-- Node.js 22.13 이상
+- Node.js 22.18 이상
 - 배포: 네이버클라우드플랫폼(NCP), http
 
 ## 실행 방법
@@ -26,6 +26,7 @@
 ```bash
 npm install
 npm run dev     # http://localhost:3000
+npm test        # 분석 함수 테스트
 ```
 
 배포용 빌드는 `npm run build` 후 `npm start`.
