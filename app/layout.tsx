@@ -15,10 +15,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <head>
-        {/* 본문은 Pretendard. 서비스 이름 "Filefit"만 세리프 Gilda Display로, 필요한 글자만 받아 가볍게 */}
+        {/* 본문은 Pretendard. 서비스 이름 "Filefit"만 굵은 세리프 Gloock으로, 필요한 글자만 받아 가볍게 */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gilda+Display&text=Filefit&display=swap" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&text=Filefit&display=swap" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"

@@ -134,9 +134,9 @@ input {
   font-size: 30px;
   line-height: 1;
 }
-/* 서비스 이름 "Filefit": Canela와 비슷한 세리프 Gilda Display (Canela는 유료라 대체), 화면 전체와 같은 남색 */
+/* 서비스 이름 "Filefit": Noe Display와 비슷한 굵은 세리프 Gloock (Noe Display는 유료라 대체), 화면 전체와 같은 남색 */
 .wordmark {
-  font-family: "Gilda Display", "Times New Roman", serif;
+  font-family: "Gloock", "Times New Roman", serif;
   font-weight: 400;
   font-size: 36px;
   line-height: 1;
