@@ -18,6 +18,22 @@ const CONTENT: Record<string, { text: string } | { copyOf: string }> = {
   "demo/보고서_v3 복사본.docx": { copyOf: "demo/보고서_v3.docx" },
   "demo/보고서_v2.docx": { text: "결과 보고서 2차 수정본입니다." },
   "demo/회의록_1115.docx": { text: "11월 15일 회의록: 역할 분담과 발표 일정" },
+  "demo/기획안_1112.pptx": { text: "기획안 - 11월 12일 첫 회의 정리" },
+  "demo/기획안_1114.pptx": { text: "기획안 - 11월 14일 주제 확정" },
+  "demo/기획안_1118 수정.pptx": { text: "기획안 - 11월 18일 일정표 수정" },
+  "demo/설문지_ver1.docx": { text: "설문지 1차: 문항 10개" },
+  "demo/설문지_ver2.docx": { text: "설문지 2차: 문항 12개로 늘림" },
+  "demo/설문지_ver3_최종.docx": { text: "설문지 3차 최종: 응답 보기 정리" },
+  "demo/대본.hwp": { text: "발표 대본 초안 (hwp 형식은 만들 수 없어 텍스트로 대신함)" },
+  "demo/대본_수정본.hwp": { text: "발표 대본 수정본 (hwp 형식은 만들 수 없어 텍스트로 대신함)" },
+  "demo/대본_찐최종.hwp": { text: "발표 대본 찐최종 (hwp 형식은 만들 수 없어 텍스트로 대신함)" },
+  "demo/포스터.pdf": { text: "Poster draft A" },
+  "demo/포스터 (1).pdf": { text: "Poster draft B" },
+  "demo/포스터 (2).pdf": { text: "Poster draft C" },
+  "demo/자료조사.docx": { text: "자료 조사: 선행 연구 5편 요약" },
+  "demo/자료조사 - 복사본.docx": { copyOf: "demo/자료조사.docx" },
+  "demo/역할분담.hwp": { text: "역할 분담표 (hwp 형식은 만들 수 없어 텍스트로 대신함)" },
+  "demo/참고문헌.pdf": { text: "References" },
   "edge/기획서_최종_수정.docx": { text: "기획서 최종 수정본" },
   "edge/기획서_최종.docx": { text: "기획서 최종본" },
   "edge/회의록.hwp": { text: "회의록 초안 (hwp 형식은 만들 수 없어 텍스트로 대신함)" },
@@ -27,6 +43,20 @@ const CONTENT: Record<string, { text: string } | { copyOf: string }> = {
   "edge/실험_1350.docx": { text: "13시 50분 실험 기록" },
   "edge/자료_v2.pdf": { text: "Jaryo v2" },
   "edge/자료_v2 - 복사본.pdf": { copyOf: "edge/자료_v2.pdf" },
+};
+
+// 미리보기가 비어 보이지 않게 채우는 본문. 파일마다 시작 문단을 돌려서 버전끼리 조금씩 다르게 보이게 함
+const LOREM = [
+  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+  "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+  "Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida.",
+  "Praesent blandit dolor. Sed non quam. In vel mi sit amet augue congue elementum. Morbi in ipsum sit amet pede facilisis laoreet. Donec lacus nunc, viverra nec, blandit vel, egestas et, augue. Vestibulum tincidunt malesuada tellus.",
+  "Phasellus ultrices nulla quis nibh. Quisque a lectus. Donec consectetuer ligula vulputate sem tristique cursus. Nam nulla quam, gravida non, commodo a, sodales sit amet, nisi. Pellentesque fermentum dolor aliquam quam lectus.",
+];
+const lorem = (title: string) => {
+  const k = title.length % LOREM.length;
+  const r = [...LOREM.slice(k), ...LOREM.slice(0, k)];
+  return [...r, ...r.slice(1)]; // 두 바퀴: A4 한 쪽을 거의 채움
 };
 
 const ZIP_TIME = new Date("2026-11-01T00:00:00Z"); // 압축 안 파일 시각을 고정해서 결과 바이트를 매번 같게 함
@@ -71,7 +101,10 @@ function makeDocx(text: string, e: Entry) {
     "[Content_Types].xml": contentTypes([["/word/document.xml", `${CT}.wordprocessingml.document.main+xml`]]),
     "_rels/.rels": pkgRels("word/document.xml"),
     "docProps/core.xml": core(text, e),
-    "word/document.xml": xml(`<w:document xmlns:w="${W}"><w:body><w:p><w:r><w:t>${esc(text)}</w:t></w:r></w:p><w:sectPr/></w:body></w:document>`),
+    "word/document.xml": xml(`<w:document xmlns:w="${W}"><w:body>` +
+      `<w:p><w:pPr><w:spacing w:after="240"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="32"/></w:rPr><w:t>${esc(text)}</w:t></w:r></w:p>` +
+      lorem(text).map((p) => `<w:p><w:pPr><w:spacing w:after="160"/></w:pPr><w:r><w:t>${esc(p)}</w:t></w:r></w:p>`).join("") +
+      `<w:sectPr/></w:body></w:document>`),
   });
 }
 
@@ -93,10 +126,26 @@ const THEME = xml(`<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml
 
 function makePptx(text: string, e: Entry) {
   const pml = `${CT}.presentationml`;
+  // 슬라이드 3장: 제목 + 문장마다 글머리 한 줄
+  const paras = lorem(text);
+  const slides = [text, "주요 내용", "정리"].map((title, i) => ({ title, bullets: paras[i].split(/(?<=\.) /) }));
+  const box = (id: number, y: number, cy: number, body: string) =>
+    `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="Text ${id}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>` +
+    `<p:spPr><a:xfrm><a:off x="762000" y="${y}"/><a:ext cx="10668000" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>` +
+    `<p:txBody><a:bodyPr wrap="square"/><a:lstStyle/>${body}</p:txBody></p:sp>`;
+  const run = (t: string, sz: number, bold = false) =>
+    `<a:p><a:pPr><a:spcAft><a:spcPts val="900"/></a:spcAft></a:pPr><a:r><a:rPr lang="ko-KR" sz="${sz}"${bold ? ' b="1"' : ""}/><a:t>${esc(t)}</a:t></a:r></a:p>`;
+  const slideParts = Object.fromEntries(slides.flatMap((s, i) => [
+    [`ppt/slides/slide${i + 1}.xml`, xml(`<p:sld ${P_NS}><p:cSld><p:spTree>${EMPTY_TREE}` +
+      box(2, 571500, 1143000, run(s.title, 3600, true)) +
+      box(3, 1905000, 4572000, s.bullets.map((b) => run(`• ${b}`, 2000)).join("")) +
+      `</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`)],
+    [`ppt/slides/_rels/slide${i + 1}.xml.rels`, rels([["rId1", `${NS_REL}/slideLayout`, "../slideLayouts/slideLayout1.xml"]])],
+  ]));
   return zip({
     "[Content_Types].xml": contentTypes([
       ["/ppt/presentation.xml", `${pml}.presentation.main+xml`],
-      ["/ppt/slides/slide1.xml", `${pml}.slide+xml`],
+      ...slides.map((_, i): [string, string] => [`/ppt/slides/slide${i + 1}.xml`, `${pml}.slide+xml`]),
       ["/ppt/slideLayouts/slideLayout1.xml", `${pml}.slideLayout+xml`],
       ["/ppt/slideMasters/slideMaster1.xml", `${pml}.slideMaster+xml`],
       ["/ppt/theme/theme1.xml", `${CT}.theme+xml`],
@@ -104,11 +153,12 @@ function makePptx(text: string, e: Entry) {
     "_rels/.rels": pkgRels("ppt/presentation.xml"),
     "docProps/core.xml": core(text, e),
     "ppt/presentation.xml": xml(`<p:presentation ${P_NS}><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>` +
-      `<p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst><p:sldSz cx="12192000" cy="6858000"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`),
+      `<p:sldIdLst>${slides.map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${2 + i}"/>`).join("")}</p:sldIdLst>` +
+      `<p:sldSz cx="12192000" cy="6858000"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`),
     "ppt/_rels/presentation.xml.rels": rels([
       ["rId1", `${NS_REL}/slideMaster`, "slideMasters/slideMaster1.xml"],
-      ["rId2", `${NS_REL}/slide`, "slides/slide1.xml"],
-      ["rId3", `${NS_REL}/theme`, "theme/theme1.xml"],
+      ...slides.map((_, i): [string, string, string] => [`rId${2 + i}`, `${NS_REL}/slide`, `slides/slide${i + 1}.xml`]),
+      [`rId${2 + slides.length}`, `${NS_REL}/theme`, "theme/theme1.xml"],
     ]),
     "ppt/slideMasters/slideMaster1.xml": xml(`<p:sldMaster ${P_NS}><p:cSld><p:spTree>${EMPTY_TREE}</p:spTree></p:cSld>` +
       `<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>` +
@@ -120,19 +170,23 @@ function makePptx(text: string, e: Entry) {
     "ppt/slideLayouts/slideLayout1.xml": xml(`<p:sldLayout ${P_NS} type="blank"><p:cSld name="Blank"><p:spTree>${EMPTY_TREE}</p:spTree></p:cSld>` +
       `<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`),
     "ppt/slideLayouts/_rels/slideLayout1.xml.rels": rels([["rId1", `${NS_REL}/slideMaster`, "../slideMasters/slideMaster1.xml"]]),
-    "ppt/slides/slide1.xml": xml(`<p:sld ${P_NS}><p:cSld><p:spTree>${EMPTY_TREE}` +
-      `<p:sp><p:nvSpPr><p:cNvPr id="2" name="Text"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>` +
-      `<p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="10363200" cy="1828800"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>` +
-      `<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="ko-KR" sz="3200"/><a:t>${esc(text)}</a:t></a:r></a:p></p:txBody></p:sp>` +
-      `</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`),
-    "ppt/slides/_rels/slide1.xml.rels": rels([["rId1", `${NS_REL}/slideLayout`, "../slideLayouts/slideLayout1.xml"]]),
+    ...slideParts,
     "ppt/theme/theme1.xml": THEME,
   });
 }
 
-// 글자 하나짜리 PDF. 한글 글꼴을 넣지 않으려고 본문은 영문
+// 한 쪽짜리 PDF. 한글 글꼴을 넣지 않으려고 본문은 영문
 function makePdf(text: string) {
-  const stream = `BT /F1 24 Tf 72 720 Td (${text}) Tj ET`;
+  const pdfStr = (s: string) => `(${s.replace(/[\\()]/g, "\\$&")})`;
+  const wrap = (p: string) => p.split(" ").reduce<string[]>((lines, w) => {
+    const last = lines.length - 1;
+    if (last >= 0 && (lines[last] + " " + w).length <= 85) lines[last] += " " + w;
+    else lines.push(w);
+    return lines;
+  }, []);
+  const body = lorem(text).flatMap((p) => [...wrap(p), ""]);
+  // ' 연산자 = 다음 줄로 내려가서 글자 쓰기 (줄 간격 TL)
+  const stream = `BT /F1 22 Tf 72 720 Td ${pdfStr(text)} Tj /F1 11 Tf 16 TL T* ${body.map((l) => `${pdfStr(l)} '`).join(" ")} ET`;
   const objs = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
@@ -160,7 +214,7 @@ function build(file: string, e: Entry): Uint8Array {
   if (ext === ".docx") return makeDocx(spec.text, e);
   if (ext === ".pptx") return makePptx(spec.text, e);
   if (ext === ".pdf") return makePdf(spec.text);
-  return strToU8(spec.text); // txt, hwp
+  return strToU8([spec.text, ...lorem(spec.text)].join("\n\n")); // txt, hwp
 }
 
 for (const [file, e] of Object.entries(manifest as Record<string, Entry>)) {

@@ -48,9 +48,9 @@ const fakeFetch = (async (url: string) => {
   return existsSync(file) ? new Response(readFileSync(file)) : new Response(null, { status: 404 });
 }) as typeof fetch;
 
-test("F-01-03: 예시 파일 8개를 manifest 수정 날짜로 불러옴 (D-14)", async () => {
+test("F-01-03: 예시 파일 24개를 manifest 수정 날짜로 불러옴 (D-14)", async () => {
   const files = await loadSamples(fakeFetch);
-  assert.equal(files.length, 8);
+  assert.equal(files.length, 24);
   assert.equal(files[0].name, "발표자료_진짜최종.pptx");
   assert.equal(files[0].lastModified, new Date("2026-11-20T23:40:00+09:00").getTime());
   assert.equal(files[0].size, readFileSync(path.join(ROOT, "samples", "demo", "발표자료_진짜최종.pptx")).length);
@@ -65,7 +65,7 @@ test("F-01-03: 하위 경로에 배포하면 예시 파일 주소에도 그 경�
   }) as typeof fetch;
   process.env.NEXT_PUBLIC_BASE_PATH = "/file-version";
   try {
-    assert.equal((await loadSamples(prefixed)).length, 8);
+    assert.equal((await loadSamples(prefixed)).length, 24);
   } finally {
     delete process.env.NEXT_PUBLIC_BASE_PATH;
   }
@@ -76,11 +76,11 @@ test("시연 흐름: 예시 불러오기 → 분석 → 이름 변경 → 최신
   const files = await loadSamples(fakeFetch);
   const { accepted } = acceptFiles([], files);
   const result = analyze(await toInputFiles(accepted, 0, 1), rules);
-  assert.equal(result.summary, "그룹 2개 · 단독 1개 · 중복 1개");
+  assert.equal(result.summary, "그룹 7개 · 단독 3개 · 중복 2개");
 
   const rows = rename(result);
   const sources = new Map(result.groups.flatMap((g) => g.files).concat(result.singles).map((x) => [x.id, { bytes: x.bytes!, lastModified: x.lastModified }]));
   const d = makeDownload(rows, sources, new Date("2026-11-21T12:00:00").getTime())!;
   assert.equal(d.filename, "정리된파일_20261121.zip");
-  assert.equal(d.count, 3);
+  assert.equal(d.count, 10);
 });

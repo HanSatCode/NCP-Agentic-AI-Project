@@ -2,7 +2,7 @@
   "_설명": "/check-result가 쓰는 기대 결과. 시나리오마다 한 번에 올린 파일 묶음이다. files 순서 = 목록 순서. 적지 않은 칸은 검사하지 않는다",
   "scenarios": [
     {
-      "name": "시연용 예시 8개",
+      "name": "시연용 예시 24개",
       "files": [
         { "path": "demo/발표자료_진짜최종.pptx", "baseName": "발표자료", "newName": "발표자료_v04_20261120.pptx" },
         { "path": "demo/발표자료 최종수정.pptx", "baseName": "발표자료", "newName": "발표자료_v03_20261119.pptx" },
@@ -11,14 +11,35 @@
         { "path": "demo/보고서_v3.docx", "baseName": "보고서", "newName": "보고서_v02_20261120.docx" },
         { "path": "demo/보고서_v3 복사본.docx", "baseName": "보고서", "duplicateOf": "보고서_v3.docx", "newName": null },
         { "path": "demo/보고서_v2.docx", "baseName": "보고서", "newName": "보고서_v01_20261116.docx" },
-        { "path": "demo/회의록_1115.docx", "baseName": "회의록", "newName": "회의록_v01_20261115.docx" }
+        { "path": "demo/회의록_1115.docx", "baseName": "회의록", "newName": "회의록_v01_20261115.docx" },
+        { "path": "demo/기획안_1112.pptx", "baseName": "기획안", "newName": "기획안_v01_20261112.pptx" },
+        { "path": "demo/기획안_1114.pptx", "baseName": "기획안", "newName": "기획안_v02_20261119.pptx" },
+        { "path": "demo/기획안_1118 수정.pptx", "baseName": "기획안", "newName": "기획안_v03_20261118.pptx" },
+        { "path": "demo/설문지_ver1.docx", "baseName": "설문지", "newName": "설문지_v01_20261111.docx" },
+        { "path": "demo/설문지_ver2.docx", "baseName": "설문지", "newName": "설문지_v02_20261113.docx" },
+        { "path": "demo/설문지_ver3_최종.docx", "baseName": "설문지", "newName": "설문지_v03_20261114.docx" },
+        { "path": "demo/대본.hwp", "baseName": "대본", "newName": "대본_v01_20261116.hwp" },
+        { "path": "demo/대본_수정본.hwp", "baseName": "대본", "newName": "대본_v02_20261118.hwp" },
+        { "path": "demo/대본_찐최종.hwp", "baseName": "대본", "newName": "대본_v03_20261117.hwp" },
+        { "path": "demo/포스터.pdf", "baseName": "포스터", "newName": "포스터_v01_20261117.pdf" },
+        { "path": "demo/포스터 (1).pdf", "baseName": "포스터", "newName": "포스터_v02_20261119.pdf" },
+        { "path": "demo/포스터 (2).pdf", "baseName": "포스터", "newName": "포스터_v03_20261120.pdf" },
+        { "path": "demo/자료조사.docx", "baseName": "자료조사", "newName": "자료조사_v01_20261113.docx" },
+        { "path": "demo/자료조사 - 복사본.docx", "baseName": "자료조사", "duplicateOf": "자료조사.docx", "newName": null },
+        { "path": "demo/역할분담.hwp", "baseName": "역할분담", "newName": "역할분담_v01_20261110.hwp" },
+        { "path": "demo/참고문헌.pdf", "baseName": "참고문헌", "newName": "참고문헌_v01_20261119.pdf" }
       ],
       "groups": [
         { "baseName": "발표자료", "status": "최신 후보", "latest": "발표자료_진짜최종.pptx", "reason": "파일명에 '진짜최종'이 있어요" },
-        { "baseName": "보고서", "status": "최신 후보", "latest": "보고서_v3.docx", "reason": "파일명에 v3가 있어요" }
+        { "baseName": "보고서", "status": "최신 후보", "latest": "보고서_v3.docx", "reason": "파일명에 v3가 있어요" },
+        { "baseName": "기획안", "status": "최신 후보", "latest": "기획안_1118 수정.pptx", "reason": "파일명의 날짜(1118)가 가장 늦어요" },
+        { "baseName": "설문지", "status": "최신 후보", "latest": "설문지_ver3_최종.docx", "reason": "파일명에 ver3가 있어요" },
+        { "baseName": "대본", "status": "최신 후보", "latest": "대본_찐최종.hwp", "reason": "파일명에 '찐최종'이 있어요" },
+        { "baseName": "포스터", "status": "최신 후보", "latest": "포스터 (2).pdf", "reason": "수정 날짜가 가장 늦어요. 카톡에서 받은 순서일 수 있어요" },
+        { "baseName": "자료조사", "status": "최신 후보", "latest": "자료조사.docx", "reason": "중복을 빼면 이 파일만 남아요" }
       ],
-      "singles": ["회의록_1115.docx"],
-      "summary": "그룹 2개 · 단독 1개 · 중복 1개"
+      "singles": ["회의록_1115.docx", "역할분담.hwp", "참고문헌.pdf"],
+      "summary": "그룹 7개 · 단독 3개 · 중복 2개"
     },
     {
       "name": "D-01 최종_수정이 30점으로 1위",

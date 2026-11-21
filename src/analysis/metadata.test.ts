@@ -67,5 +67,5 @@ test("미리보기: 다른 형식·깨진 파일은 null, 예시 docx는 읽힘"
   assert.equal(readDocText("a.hwp", new Uint8Array([1])), null);
   assert.equal(readDocText("a.docx", new Uint8Array([1, 2])), null);
   const bytes = readFileSync(new URL("../../public/samples/demo/보고서_v2.docx", import.meta.url));
-  assert.equal(readDocText("보고서_v2.docx", new Uint8Array(bytes)), "결과 보고서 2차 수정본입니다.");
+  assert.equal(readDocText("보고서_v2.docx", new Uint8Array(bytes))?.split("\n")[0], "결과 보고서 2차 수정본입니다.");
 });
