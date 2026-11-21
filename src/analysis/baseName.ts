@@ -47,6 +47,7 @@ export function parseName(name: string, rules: Rules): ParsedName {
     }
   }
   const copyMark = stem.slice(s.length).trim() || null;
+  const withoutCopy = s.trim(); // 7단계에서 다 지워졌을 때 쓸 이름 (D-27)
 
   // 3. 파일명 날짜. 월 01~12, 일 01~31로 읽힐 때만 날짜 (D-03, 예: 1350은 날짜 아님)
   let date: ParsedName["date"] = null;
@@ -89,6 +90,7 @@ export function parseName(name: string, rules: Rules): ParsedName {
     keyword = { word: best.word, score: best.score, raw };
   }
 
-  // 7. 남은 문자열이 기본 이름. 다 지워져 비면 원래 이름 사용
-  return { name, stem, ext, baseName: s || stem, copyMark, version, date, keyword };
+  // 7. 남은 문자열이 기본 이름. 다 지워져 비면 복사본 표시만 지운 이름, 그것도 비면 원래 이름 (D-27)
+  //    "최종.docx"와 같은 이름으로 다시 저장해 생긴 "최종 (1).docx"가 한 그룹이 된다
+  return { name, stem, ext, baseName: s || withoutCopy || stem, copyMark, version, date, keyword };
 }

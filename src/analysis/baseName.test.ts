@@ -95,4 +95,6 @@ test("빈 이름·확장자 없음", () => {
   assert.equal(p(".env").ext, "");
   assert.equal(p("copy.txt").baseName, "copy"); // 이름 전체가 복사본 표시면 다 지워져서 원래 이름
   assert.equal(p("(1).docx").baseName, "(1)");
+  assert.equal(p("최종 (1).pptx").baseName, "최종"); // D-27: 복사본 표시만 지운 이름이라 "최종.pptx"와 한 그룹
+  assert.equal(p("final_1.txt").baseName, "final");
 });

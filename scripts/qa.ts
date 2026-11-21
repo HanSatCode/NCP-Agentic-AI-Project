@@ -40,12 +40,8 @@ for (const [i, w] of unit) check("단위", i, base(i), w);
 check("단위", "server3 (확인 필요 항목, 지금 값 server3)", base("server3"), "server3");
 check("단위", "v2 → 다 지워지면 원래 이름", base("v2"), "v2");
 check("단위", "(1) → 다 지워지면 원래 이름", base("(1)"), "(1)");
-// 확인 필요 후보: 소수 버전 v1.2
-for (const [i, w] of [["보고서_v1.2", "보고서"]] as const) {
-  const g = base(i);
-  if (g !== w) ask("단위", i, `기본 이름 '${g}' → '발표자료'/'보고서'와 다른 그룹이 됨. CLAUDE.md에 규칙 없음`);
-  else check("단위", i, g, w);
-}
+check("단위", "보고서_v1.2 (소수 버전은 v1만 읽음, 2026-11-21 그대로 두기로 함)", base("보고서_v1.2"), "보고서.2");
+check("단위", "최종 (1) → 복사본 표시만 지운 이름 (D-27)", base("최종 (1)"), "최종");
 
 // ---------- 시나리오 ----------
 const KST = (d: string) => new Date(`2026-${d}:00+09:00`).getTime();
@@ -126,8 +122,8 @@ const S = "시나리오";
 }
 { // E18
   const a = analyze(mk([{ name: "최종.docx", mtime: "11-20T10:00" }, { name: "최종 (1).docx", mtime: "11-21T10:00" }]), rules);
-  check(S, "E18 빈 이름 → 원래 이름", [a.groups.map((g) => g.baseName), a.singles.map((f) => f.parsed.baseName)], [[], ["최종", "최종 (1)"]]);
-  if (a.groups.length === 0) ask(S, "E18b '최종.docx'·'최종 (1).docx'", "빈 이름이라 원래 이름을 쓰면 둘이 다른 그룹이 됨. 복사본 표시만 지운 이름(최종)으로 묶을지 팀이 정할 것");
+  check(S, "E18 빈 이름 → 복사본 표시만 지운 이름으로 한 그룹 (D-27)", [a.groups.map((g) => [g.baseName, g.files.length, g.latestId]), a.singles.length], [[["최종", 2, "최종 (1).docx|1"]], 0]);
+  check(S, "E18 새 이름", rename(a, { scope: "all" }).map((r) => r.to), ["최종_v2_20261121.docx", "최종_v1_20261120.docx"]);
 }
 { // D-09 직접 선택, F-03-05 충돌·금지 문자, D-11 단독 포함
   const a = analyze(mk([
