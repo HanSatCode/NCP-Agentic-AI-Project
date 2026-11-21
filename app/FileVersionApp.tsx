@@ -378,7 +378,7 @@ export default function FileVersionApp() {
       {/* S-01 상단 헤더 */}
       <header className="header">
         <h1 className="brand-title" aria-label="Filefit 파일핏">
-          <Logo size={34} />
+          <Logo size={38} />
           <span className="wordmark" aria-hidden>
             File<span className="wordmark-fit">fit</span>
           </span>

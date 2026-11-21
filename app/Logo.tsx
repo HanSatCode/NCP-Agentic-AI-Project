@@ -1,13 +1,27 @@
-// 파일핏 로고 마크
-// 뒤의 파란 종이 = 여러 버전 파일, 앞의 남색 종이 + 체크 = 정리된 최신 파일 하나 (Fit)
+// Filefit 로고 마크: 열린 폴더와 안에 든 종이 두 장 (선 아이콘, 배경 없음)
+// 색은 글자색(currentColor)을 따라 화면의 남색으로 보인다
 // app/icon.svg (브라우저 탭 아이콘)와 같은 모양이다. 고칠 때 두 곳을 같이 고친다
 
 export default function Logo({ size = 32 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <rect x="10" y="2" width="18" height="23" rx="4.5" fill="#2554d8" />
-      <rect x="4" y="7" width="18" height="23" rx="4.5" fill="#0f1729" />
-      <path d="M8.5 18.5l3.2 3.2 6-6.4" stroke="#ffffff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* 뒤판과 탭 */}
+      <path d="M5 14V3.5h10l2.5 2.5H27V14" />
+      {/* 안에 든 종이 두 장 */}
+      <path d="M8.5 14V7.5h14V14" />
+      <path d="M11 14v-3.5h9V14" />
+      {/* 열린 앞판 */}
+      <path d="M2.5 14h27l-2.6 14.5H5.1z" />
     </svg>
   );
 }
